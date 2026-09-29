@@ -167,7 +167,7 @@ export function startStudioServer(port: number = 3125, initialModelPath?: string
 }
 
 // Standalone execution
-if (process.argv[1] && process.argv[1].endsWith('app.ts')) {
+if (process.argv[1] && (process.argv[1].endsWith('app.ts') || process.argv[1].endsWith('app.js'))) {
   startStudioServer(3125).then((port) => {
     console.log(`⚡ Creality K1 Plate Studio running at http://localhost:${port}`);
   });

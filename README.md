@@ -4,6 +4,10 @@ A high-performance, developer-grade CLI and interactive 3D Plate Studio for the 
 
 Built to eliminate the bloat, slow startup, and telemetry/spyware concerns of vendor GUI slicers while providing 100% slicing parity with Creality Print v5 using the audited, open-source **OrcaSlicer Core** engine.
 
+![Creality K1 3D Plate Studio](assets/studio_model_loaded.png)
+
+> 📘 **New to K1 Slicer Util?** Check out the step-by-step **[Complete Tutorial & Guide (TUTORIAL.md)](TUTORIAL.md)**.
+
 ---
 
 ## Features
@@ -69,6 +73,8 @@ k1-slice
 k1-slice studio
 ```
 
+![3D Build Plate View](assets/studio_overview.png)
+
 ### Mode 2: Quick Headless Slicing
 Slice an STL file directly from the terminal with default K1 profiles in under 1 second:
 ```bash
@@ -130,6 +136,8 @@ You can configure and persist default settings **both in the Browser Studio and 
      - Toggle auto-orient heuristic by default.
 4. Click **"Save Defaults"** to write changes to `~/.k1-slicer/config.json`.
 5. Click **"Reset Factory Defaults"** to restore original recommended profiles.
+
+![Browser Settings & Defaults Modal](assets/studio_settings_modal.png)
 
 ### Option B: In the Terminal (CLI `config` command)
 ```bash
