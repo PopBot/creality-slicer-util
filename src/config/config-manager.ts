@@ -16,6 +16,7 @@ export interface K1Config {
   walls?: number;
   autoCenter?: boolean;
   autoOrient?: boolean;
+  unit?: 'inches' | 'mm';
   orcaPath?: string;
 }
 
@@ -32,6 +33,7 @@ export const DEFAULT_CONFIG: K1Config = {
   walls: 3,
   autoCenter: true,
   autoOrient: false,
+  unit: 'inches',
 };
 
 export class ConfigManager {

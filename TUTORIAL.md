@@ -92,6 +92,13 @@ Your default browser will open to `http://localhost:3125`:
 ![3D Plate Studio Overview](assets/studio_overview.png)
 
 ### Key Features of the Studio:
+- **🧭 Top-Right 3-Axis Orientation Visualizer (Blender/Shapr3D Style):**
+  - Displays the active viewport orientation with colored axes: **Red ($X$)**, **Green ($Y$)**, and **Blue ($Z$)**.
+  - **Orbit Dragging:** Click and drag directly on the orientation gizmo to fluidly orbit around the build plate.
+  - **Axis Snapping:** Click any axis sphere to snap the camera into an exact orthogonal view (Isometric, Top, Front, Right).
+- **📏 Inches as Default Measurement Unit:**
+  - Designed for makers who prefer imperial units: the bed size ($8.66 \times 8.66 \times 9.84\text{ in}$), model dimensions, and boundary alerts display in inches by default.
+  - **Unit Toggle:** Easily flip between `in` and `mm` using the toggle buttons in the top navigation bar.
 - **Full 360° Navigation:** Left-click + drag to orbit in any direction with no axis clamping. Right-click to pan. Scroll to zoom.
 - **Creality K1 Build Bed:** Accurately rendered $220 \times 220\text{ mm}$ textured build plate with $10\text{ mm}$ grid lines, center crosshair, and $250\text{ mm}$ height bounding cage.
 - **Camera Snapping:** Instant isometric, top-down, front, and side angle buttons in the top bar.
@@ -108,8 +115,8 @@ You can load 3D models onto the build plate in two ways:
 
 ### Real-Time Boundary Safety Checks
 The studio continuously monitors geometry in real time:
-- **Inside Bounds (Green):** Displays `✓ Model placed within K1 build envelope`.
-- **Outside Bounds (Glowing Red):** If a model crosses $X \notin [0, 220]$, $Y \notin [0, 220]$, sinks below the bed ($Z < 0$), floats unsupported ($Z > 0$), or exceeds $250\text{ mm}$ height, the mesh turns glowing red and specific warning badges appear.
+- **Inside Bounds (Green):** Displays `✓ Model placed within K1 build envelope (8.66×8.66×9.84 in)`.
+- **Outside Bounds (Glowing Red):** If a model crosses $X \notin [0, 8.66\text{ in}]$, $Y \notin [0, 8.66\text{ in}]$, sinks below the bed ($Z < 0$), floats unsupported ($Z > 0$), or exceeds max height, the mesh turns glowing red and specific warning badges appear.
 
 ---
 
@@ -155,12 +162,18 @@ You can configure and persist your default preferences so you never have to re-e
 
 ![Slicing Defaults Tab](assets/studio_settings_slicing.png)
 
-4. Click **"Save Defaults"** — settings are saved to `~/.k1-slicer/config.json`.
+4. **Bed & Placement Tab:**
+   - Set Default Measurement Unit (`inches` vs `mm`).
+   - Toggle Auto-centering and Auto-orient defaults.
+5. Click **"Save Defaults"** — settings are permanently saved to `~/.k1-slicer/config.json`.
 
 ### Option B: Via the Terminal
 ```bash
 # View all current defaults
 k1-slice config
+
+# Set default unit of measurement (inches or mm):
+k1-slice config set unit inches
 
 # Set default printer IP:
 k1-slice config set printer-ip 192.168.1.150

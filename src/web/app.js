@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { ViewHelper } from 'three/addons/helpers/ViewHelper.js';
 
 // K1 Physical Specifications
 const BED_SIZE_X = 220;
@@ -13,11 +14,20 @@ const BED_CENTER_Y = BED_SIZE_Y / 2;
 
 // App State
 let scene, camera, renderer, orbitControls, transformControls;
+let viewHelper, clock;
+let currentUnit = 'inches'; // default to inches as requested
 let models = [];
 let selectedModel = null;
 let layFlatMode = false;
 let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2();
+
+export function formatDim(mmVal) {
+  if (currentUnit === 'inches') {
+    return `${(mmVal / 25.4).toFixed(2)} in`;
+  }
+  return `${mmVal.toFixed(1)} mm`;
+}
 
 // Materials
 const matNormal = new THREE.MeshStandardMaterial({
@@ -79,6 +89,11 @@ function init() {
   });
   scene.add(transformControls.getHelper());
 
+  // 3-Axis Orientation ViewHelper (Blender/Shapr3D style in top right of 3D viewport)
+  clock = new THREE.Clock();
+  viewHelper = new ViewHelper(camera, renderer.domElement);
+  updateViewHelperPosition();
+
   // Lights
   setupLighting();
 
@@ -88,7 +103,7 @@ function init() {
   // Window Resize
   window.addEventListener('resize', onWindowResize);
 
-  // Canvas Click for Raycasting (Selection & Lay-Flat)
+  // Canvas Click for Raycasting (Selection, Lay-Flat & Orientation Gizmo)
   renderer.domElement.addEventListener('pointerdown', onCanvasPointerDown);
 
   // Setup UI Listeners
@@ -152,17 +167,33 @@ function setupBuildPlate() {
   scene.add(crosshair);
 }
 
+function updateViewHelperPosition() {
+  if (!viewHelper) return;
+  const rightPanel = document.querySelector('.right-panel');
+  const offsetRight = (rightPanel ? rightPanel.offsetWidth : 330) + 24;
+  viewHelper.location = { top: 20, right: offsetRight, bottom: null, left: null };
+}
+
 function onWindowResize() {
   const container = document.getElementById('canvas-container');
   camera.aspect = container.clientWidth / container.clientHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(container.clientWidth, container.clientHeight);
+  updateViewHelperPosition();
 }
 
 function animate() {
   requestAnimationFrame(animate);
+  const delta = clock.getDelta();
   orbitControls.update();
+  renderer.autoClear = true;
   renderer.render(scene, camera);
+  renderer.autoClear = false;
+  renderer.clearDepth();
+  viewHelper.render(renderer);
+  if (viewHelper.animating) {
+    viewHelper.update(delta);
+  }
 }
 
 // ----------------- Model Management -----------------
@@ -246,25 +277,25 @@ function checkBoundaries() {
     // Check XY boundaries [0, 220]
     if (box.min.x < 0 || box.max.x > BED_SIZE_X) {
       modelValid = false;
-      issues.push(`Extends past X boundary (0–220mm)`);
+      issues.push(`Extends past X boundary (0–${formatDim(BED_SIZE_X)})`);
     }
     if (box.min.y < 0 || box.max.y > BED_SIZE_Y) {
       modelValid = false;
-      issues.push(`Extends past Y boundary (0–220mm)`);
+      issues.push(`Extends past Y boundary (0–${formatDim(BED_SIZE_Y)})`);
     }
 
     // Check Z grounding & max height
     if (box.min.z < -0.1) {
       modelValid = false;
-      issues.push(`Penetrates below bed surface (${box.min.z.toFixed(1)}mm)`);
+      issues.push(`Penetrates below bed surface (${formatDim(box.min.z)})`);
     } else if (box.min.z > 0.5) {
       modelValid = false;
-      issues.push(`Floating above bed (${box.min.z.toFixed(1)}mm)`);
+      issues.push(`Floating above bed (${formatDim(box.min.z)})`);
     }
 
     if (box.max.z > MAX_HEIGHT_Z) {
       modelValid = false;
-      issues.push(`Exceeds max Z height of 250mm`);
+      issues.push(`Exceeds max Z height of ${formatDim(MAX_HEIGHT_Z)}`);
     }
 
     // Update material
@@ -279,7 +310,8 @@ function checkBoundaries() {
   if (allValid) {
     banner.className = 'boundary-banner valid';
     banner.querySelector('.status-icon').textContent = '✓';
-    bannerText.textContent = 'Model placed within K1 build envelope (220×220×250 mm)';
+    const bedDesc = currentUnit === 'inches' ? '8.66×8.66×9.84 in' : '220×220×250 mm';
+    bannerText.textContent = `Model placed within K1 build envelope (${bedDesc})`;
     btnSlice.disabled = false;
     btnSliceAndPrint.disabled = !document.getElementById('txtPrinterIp').value.trim();
   } else {
@@ -294,6 +326,11 @@ function checkBoundaries() {
 // ----------------- Lay Flat on Click & Auto Orient -----------------
 
 function onCanvasPointerDown(event) {
+  // Check if click was on orientation ViewHelper (top-right gizmo)
+  if (viewHelper && viewHelper.handleClick(event)) {
+    return;
+  }
+
   const container = document.getElementById('canvas-container');
   const rect = container.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
@@ -469,6 +506,12 @@ function setupUI() {
     document.getElementById('supportOptions').style.display = e.target.checked ? 'block' : 'none';
   };
 
+  // Unit toggle buttons
+  const btnUnitInches = document.getElementById('btnUnitInches');
+  const btnUnitMm = document.getElementById('btnUnitMm');
+  if (btnUnitInches) btnUnitInches.onclick = () => setUnit('inches');
+  if (btnUnitMm) btnUnitMm.onclick = () => setUnit('mm');
+
   // Save Defaults Button
   const btnSaveDefaults = document.getElementById('btnSaveDefaults');
   if (btnSaveDefaults) {
@@ -483,6 +526,7 @@ function setupUI() {
         supports: document.getElementById('chkSupports').checked,
         supportType: document.getElementById('selSupportType').value,
         printerIp: document.getElementById('txtPrinterIp').value.trim(),
+        unit: currentUnit,
       };
       try {
         const res = await fetch('/api/config', {
@@ -540,6 +584,33 @@ function setupUI() {
   setupSettingsModal();
 }
 
+export function setUnit(unit) {
+  currentUnit = unit;
+  const btnInches = document.getElementById('btnUnitInches');
+  const btnMm = document.getElementById('btnUnitMm');
+  if (btnInches && btnMm) {
+    btnInches.classList.toggle('active', unit === 'inches');
+    btnMm.classList.toggle('active', unit === 'mm');
+  }
+
+  // Update physical specs card
+  const specBed = document.getElementById('specBed');
+  const specMaxZ = document.getElementById('specMaxZ');
+  const specNozzle = document.getElementById('specNozzle');
+  if (specBed) {
+    specBed.textContent = unit === 'inches' ? '8.66 × 8.66 in' : '220 × 220 mm';
+  }
+  if (specMaxZ) {
+    specMaxZ.textContent = unit === 'inches' ? '9.84 in' : '250 mm';
+  }
+  if (specNozzle) {
+    specNozzle.textContent = unit === 'inches' ? '0.016 in (0.4mm)' : '0.4 mm';
+  }
+
+  checkBoundaries();
+  updateModelListUI();
+}
+
 let activeConfig = {};
 
 async function loadSavedConfig() {
@@ -553,6 +624,9 @@ async function loadSavedConfig() {
 }
 
 function applyConfigToUI(cfg) {
+  if (cfg.unit) {
+    setUnit(cfg.unit);
+  }
   if (cfg.preset) document.getElementById('selPreset').value = cfg.preset;
   if (cfg.material) document.getElementById('selMaterial').value = cfg.material;
   if (cfg.infill !== undefined) {
@@ -597,6 +671,7 @@ function setupSettingsModal() {
     document.getElementById('cfgSupportType').value = activeConfig.supportType || 'tree';
     document.getElementById('cfgAutoCenter').checked = activeConfig.autoCenter !== false;
     document.getElementById('cfgAutoOrient').checked = !!activeConfig.autoOrient;
+    document.getElementById('cfgUnit').value = activeConfig.unit || 'inches';
 
     modal.classList.remove('hidden');
   };
@@ -658,6 +733,7 @@ function setupSettingsModal() {
       supportType: document.getElementById('cfgSupportType').value,
       autoCenter: document.getElementById('cfgAutoCenter').checked,
       autoOrient: document.getElementById('cfgAutoOrient').checked,
+      unit: document.getElementById('cfgUnit').value,
     };
 
     try {
@@ -711,7 +787,13 @@ function updateModelListUI() {
   models.forEach((m, idx) => {
     const item = document.createElement('div');
     item.className = `model-item ${m === selectedModel ? 'selected' : ''}`;
-    item.textContent = m.userData.filename || `Model #${idx + 1}`;
+    const box = new THREE.Box3().setFromObject(m);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const sizeStr = currentUnit === 'inches'
+      ? `${(size.x / 25.4).toFixed(2)} × ${(size.y / 25.4).toFixed(2)} × ${(size.z / 25.4).toFixed(2)} in`
+      : `${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} mm`;
+    item.innerHTML = `<div style="font-weight: 600;">${m.userData.filename || `Model #${idx + 1}`}</div><div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">${sizeStr}</div>`;
     item.onclick = () => selectModel(m);
     list.appendChild(item);
   });

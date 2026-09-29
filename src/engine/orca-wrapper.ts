@@ -63,14 +63,48 @@ export class OrcaWrapper {
     const filamentProfile = ProfileManager.getFilamentProfile(options.material || 'hyper-pla');
 
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'k1-slice-'));
+
+    // Clone and customize process profile to cleanly override parameters without CLI flag friction
+    const processJson = JSON.parse(fs.readFileSync(processProfile, 'utf-8'));
+    if (options.infill !== undefined) {
+      processJson.sparse_infill_density = `${options.infill}%`;
+    }
+    if (options.infillPattern) {
+      processJson.sparse_infill_pattern = options.infillPattern;
+    }
+    if (options.layerHeight !== undefined) {
+      processJson.layer_height = options.layerHeight.toString();
+    }
+    if (options.supports !== undefined) {
+      processJson.enable_support = options.supports ? '1' : '0';
+      if (options.supports) {
+        processJson.support_type = options.supportType === 'tree' ? 'tree(auto)' : 'normal(auto)';
+      }
+    }
+    if (options.brim) {
+      const brimMap: Record<string, string> = {
+        none: 'no_brim',
+        outer: 'outer_only',
+        inner_and_outer: 'outer_and_inner',
+        auto: 'auto_brim',
+      };
+      processJson.brim_type = brimMap[options.brim] || 'auto_brim';
+    }
+    if (options.walls !== undefined) {
+      processJson.wall_loops = options.walls.toString();
+    }
+
+    const customProcessPath = path.join(tempDir, 'custom_process.json');
+    fs.writeFileSync(customProcessPath, JSON.stringify(processJson, null, 2), 'utf-8');
+
     const args: string[] = [
       '--load-settings',
-      `${machineProfile};${processProfile}`,
+      `${machineProfile};${customProcessPath}`,
       '--load-filaments',
       filamentProfile,
     ];
 
-    // Arrange / Orient flags
+    // Arrange / Orient flags supported by CLI
     if (options.arrange === false) {
       args.push('--arrange', '0');
     } else {
@@ -79,42 +113,6 @@ export class OrcaWrapper {
 
     if (options.orient) {
       args.push('--orient', '1');
-    }
-
-    // Setting overrides
-    if (options.infill !== undefined) {
-      args.push('--sparse-infill-density', `${options.infill}%`);
-    }
-
-    if (options.infillPattern) {
-      args.push('--sparse-infill-pattern', options.infillPattern);
-    }
-
-    if (options.layerHeight !== undefined) {
-      args.push('--layer-height', options.layerHeight.toString());
-    }
-
-    if (options.supports === true) {
-      args.push('--enable-support');
-      if (options.supportType === 'tree') {
-        args.push('--support-type', 'tree_auto');
-      } else {
-        args.push('--support-type', 'normal_auto');
-      }
-    }
-
-    if (options.brim) {
-      const brimMap: Record<string, string> = {
-        none: 'no_brim',
-        outer: 'outer_only',
-        inner_and_outer: 'outer_and_inner',
-        auto: 'auto_brim',
-      };
-      args.push('--brim-type', brimMap[options.brim] || 'auto_brim');
-    }
-
-    if (options.walls !== undefined) {
-      args.push('--wall-loops', options.walls.toString());
     }
 
     // Output dir and slice action

@@ -207,15 +207,30 @@ k1-slice gear.stl --printer-ip 192.168.1.150 --print
 | `-i, --preview` | Force launch 3D Plate Studio in default browser | - |
 | `--auto-center` | Automatically center mesh at $(110, 110)$ and drop to $Z=0$ | Config default (`true`) |
 | `--no-auto-center` | Do not auto-center the model | - |
-| `--auto-orient` | Heuristically orient mesh to maximize bed contact area | Config default (`false`) |
+| `--unit <unit>` | Measurement unit: `inches` or `mm` | Config default (`inches`) |
 | `--printer-ip <ip>` | K1 LAN IP address (uploads via Moonraker or Creality OS) | Config default |
 | `--print` | Automatically start print job after network upload | `false` |
 | `--headless` | Force headless slicing even if placement warnings exist | `false` |
 
 ---
 
-## 3D Plate Studio Keyboard & Mouse Controls
+## 3D Plate Studio Controls & Visualizer
 
+### 🧭 3-Axis Orientation Visualizer (Blender / Shapr3D Style)
+Located in the **top-right corner** of the 3D viewport:
+- **Real-Time Axis Tracking:** Displays the current camera orientation with colored axis planes:
+  - **Red ($X$):** Left / Right axis.
+  - **Green ($Y$):** Front / Back bed depth axis.
+  - **Blue ($Z$):** Vertical height axis.
+- **Interactive Orbiting:** Click and drag anywhere on the gizmo to smoothly orbit the camera around the build plate.
+- **Orthogonal Snap:** Click any labeled axis sphere ($X, Y, Z$) to instantly snap the camera to that orthogonal projection.
+
+### 📏 Inches & Millimeters Support
+- **Default in Inches:** All dimensions (K1 bed size: $8.66 \times 8.66 \times 9.84\text{ in}$, model dimensions, bounding limits) default to inches.
+- **Instant Toggle:** Switch between `in` and `mm` at any time with the top-bar toggle button group.
+- **Configurable Persistence:** Set your preferred default unit in `k1-slice config set unit <inches|mm>` or via the Bed & Placement tab in the Settings modal.
+
+### Keyboard & Mouse Navigation
 - **Left Mouse Click + Drag:** Full 360° orbit rotation in all 3 axes.
 - **Right Mouse Click + Drag:** Pan camera across the build plate.
 - **Scroll Wheel:** Zoom in / out.

@@ -92,6 +92,7 @@ program
   .option('--auto-center', 'Automatically center model at (110, 110) and ground bottom to Z=0', userConfig.autoCenter ?? true)
   .option('--no-auto-center', 'Do not auto-center the model')
   .option('--auto-orient', 'Heuristically orient the model to maximize bed contact area')
+  .option('--unit <unit>', 'Measurement unit: inches or mm (default: inches)', userConfig.unit || 'inches')
   .option('--printer-ip <ip>', 'Creality K1 printer IP address to send G-code directly over LAN', userConfig.printerIp)
   .option('--print', 'Automatically start print immediately after uploading to printer')
   .option('--headless', 'Force headless slicing without launching browser even if boundary issues exist')
@@ -117,9 +118,13 @@ program
         }
       }
 
+      const isInch = (options.unit || 'inches').toLowerCase() === 'inches';
+      const toIn = (mm: number) => (mm / 25.4).toFixed(2);
+
       console.log(`\n======================================================`);
       console.log(`  ⚡ CREALITY K1 SLICER ENGINE (OrcaSlicer Core)`);
-      console.log(`  Bed Volume: 220 × 220 × 250 mm | Preset: ${options.preset}`);
+      console.log(`  Bed Volume: 8.66 × 8.66 × 9.84 in (220 × 220 × 250 mm)`);
+      console.log(`  Preset    : ${options.preset} | Default Unit: ${options.unit}`);
       console.log(`======================================================\n`);
 
       // 1. Inspect geometry of first file
@@ -130,13 +135,18 @@ program
       if (validation) {
         const bb = validation.boundingBox;
         console.log(`📦 Model Metrics: ${path.basename(primaryFile)}`);
-        console.log(`   Dimensions : ${bb.width.toFixed(1)} × ${bb.depth.toFixed(1)} × ${bb.height.toFixed(1)} mm`);
-        console.log(`   Position   : X [${bb.minX.toFixed(1)} to ${bb.maxX.toFixed(1)}], Y [${bb.minY.toFixed(1)} to ${bb.maxY.toFixed(1)}], Z [${bb.minZ.toFixed(1)} to ${bb.maxZ.toFixed(1)}]`);
+        if (isInch) {
+          console.log(`   Dimensions : ${toIn(bb.width)} × ${toIn(bb.depth)} × ${toIn(bb.height)} in (${bb.width.toFixed(1)} × ${bb.depth.toFixed(1)} × ${bb.height.toFixed(1)} mm)`);
+          console.log(`   Position   : X [${toIn(bb.minX)} to ${toIn(bb.maxX)} in], Y [${toIn(bb.minY)} to ${toIn(bb.maxY)} in], Z [${toIn(bb.minZ)} to ${toIn(bb.maxZ)} in]`);
+        } else {
+          console.log(`   Dimensions : ${bb.width.toFixed(1)} × ${bb.depth.toFixed(1)} × ${bb.height.toFixed(1)} mm`);
+          console.log(`   Position   : X [${bb.minX.toFixed(1)} to ${bb.maxX.toFixed(1)} mm], Y [${bb.minY.toFixed(1)} to ${bb.maxY.toFixed(1)} mm], Z [${bb.minZ.toFixed(1)} to ${bb.maxZ.toFixed(1)} mm]`);
+        }
         console.log(`   Triangles  : ${validation.triangleCount.toLocaleString()}`);
 
         if (bb.width > K1_SPECS.bedWidth || bb.depth > K1_SPECS.bedDepth || bb.height > K1_SPECS.maxHeight) {
-          console.error(`\n❌ ERROR: Model dimensions exceed physical K1 build volume (220×220×250 mm)!`);
-          console.error(`   Model size: ${bb.width.toFixed(1)}×${bb.depth.toFixed(1)}×${bb.height.toFixed(1)} mm`);
+          console.error(`\n❌ ERROR: Model dimensions exceed physical K1 build volume (8.66×8.66×9.84 in / 220×220×250 mm)!`);
+          console.error(`   Model size: ${toIn(bb.width)}×${toIn(bb.depth)}×${toIn(bb.height)} in (${bb.width.toFixed(1)}×${bb.depth.toFixed(1)}×${bb.height.toFixed(1)} mm)`);
           console.error(`   Please scale down the model in the 3D Plate Studio.\n`);
         }
       }

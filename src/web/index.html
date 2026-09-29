@@ -39,6 +39,12 @@
         <button id="btnModeScale" title="Scale (S)">Scale [S]</button>
       </div>
 
+      <div class="unit-toggle-group">
+        <span class="label">Unit:</span>
+        <button id="btnUnitInches" class="unit-btn active" title="Display measurements in Inches">in</button>
+        <button id="btnUnitMm" class="unit-btn" title="Display measurements in Millimeters">mm</button>
+      </div>
+
       <div class="top-actions">
         <button id="btnOpenSettings" class="settings-btn" title="Configure Default Settings">
           ⚙️ Settings & Defaults
@@ -102,9 +108,9 @@
             <span class="tag">CoreXY</span>
           </div>
           <div class="specs-grid">
-            <div><span>Bed:</span> 220×220 mm</div>
-            <div><span>Max Z:</span> 250 mm</div>
-            <div><span>Nozzle:</span> 0.4 mm</div>
+            <div><span>Bed:</span> <span id="specBed">8.66 × 8.66 in</span></div>
+            <div><span>Max Z:</span> <span id="specMaxZ">9.84 in</span></div>
+            <div><span>Nozzle:</span> <span id="specNozzle">0.016 in (0.4mm)</span></div>
             <div><span>Speed:</span> Up to 600 mm/s</div>
           </div>
         </div>
@@ -363,6 +369,14 @@
               <input type="checkbox" id="cfgAutoOrient">
               <span>Auto-orient models to maximize bed contact area</span>
             </label>
+          </div>
+          <div class="form-group" style="margin-top: 8px;">
+            <label for="cfgUnit">Default Measurement Unit</label>
+            <select id="cfgUnit">
+              <option value="inches" selected>Inches (Default)</option>
+              <option value="mm">Millimeters (mm)</option>
+            </select>
+            <span class="field-hint">Preferred unit of measurement across the studio and CLI.</span>
           </div>
           <div class="specs-grid" style="margin-top: 14px; padding: 12px; background: var(--bg-card); border-radius: 8px;">
             <div><span>Bed Width (X):</span> 220 mm</div>
