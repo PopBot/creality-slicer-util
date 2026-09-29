@@ -54,6 +54,35 @@ npm link # (Optional: allows running 'k1-slice' anywhere)
 
 ## CLI Usage
 
+### Standalone App / Studio Mode
+To simply open the 3D Plate Studio application to configure settings, connect to your printer, or drag-and-drop models onto the bed:
+```bash
+# Launch directly in your browser:
+k1-slice
+
+# Or explicitly:
+k1-slice studio
+```
+
+### Managing Persistent Defaults
+Configure your printer IP and favorite slicing options once, and they will persist across all CLI runs and browser sessions (`~/.k1-slicer/config.json`):
+```bash
+# View all current defaults:
+k1-slice config
+
+# Set default printer IP:
+k1-slice config set printer-ip 192.168.1.150
+
+# Set default material:
+k1-slice config set material hyper-pla
+
+# Set default quality preset:
+k1-slice config set preset standard
+
+# Reset to factory defaults:
+k1-slice config reset
+```
+
 ### Basic Slicing (Headless)
 Slice an STL file with default Creality K1 Standard profile (0.20mm, Hyper PLA, Gyroid infill):
 ```bash

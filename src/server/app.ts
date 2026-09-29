@@ -7,6 +7,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { OrcaWrapper, SliceOptions } from '../engine/orca-wrapper.js';
 import { K1PrinterClient } from '../printer/k1-client.js';
+import { ConfigManager } from '../config/config-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,6 +40,17 @@ export function createServer(initialModelPath?: string) {
   // Serve static web app assets
   const webPath = path.join(projectRoot, 'src/web');
   app.use(express.static(webPath));
+
+  // Get saved user defaults
+  app.get('/api/config', (_req, res) => {
+    return res.json(ConfigManager.load());
+  });
+
+  // Save user defaults
+  app.post('/api/config', (req, res) => {
+    const updated = ConfigManager.save(req.body);
+    return res.json(updated);
+  });
 
   // Serve initial model if passed via CLI
   app.get('/api/model', (req, res) => {

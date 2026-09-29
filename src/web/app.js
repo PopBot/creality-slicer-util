@@ -469,12 +469,99 @@ function setupUI() {
     document.getElementById('supportOptions').style.display = e.target.checked ? 'block' : 'none';
   };
 
+  // Save Defaults Button
+  const btnSaveDefaults = document.getElementById('btnSaveDefaults');
+  if (btnSaveDefaults) {
+    btnSaveDefaults.onclick = async () => {
+      const payload = {
+        preset: document.getElementById('selPreset').value,
+        material: document.getElementById('selMaterial').value,
+        infill: parseInt(document.getElementById('rangeInfill').value, 10),
+        infillPattern: document.getElementById('selInfillPattern').value,
+        walls: parseInt(document.getElementById('numWalls').value, 10),
+        brim: document.getElementById('selBrim').value,
+        supports: document.getElementById('chkSupports').checked,
+        supportType: document.getElementById('selSupportType').value,
+        printerIp: document.getElementById('txtPrinterIp').value.trim(),
+      };
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          alert('✓ Settings saved as persistent defaults in ~/.k1-slicer/config.json!');
+        }
+      } catch (e) {
+        alert(`Failed to save settings: ${e.message}`);
+      }
+    };
+  }
+
+  // Drag and Drop files onto 3D Canvas
+  const canvasContainer = document.getElementById('canvas-container');
+  ['dragenter', 'dragover'].forEach((name) => {
+    window.addEventListener(name, (e) => {
+      e.preventDefault();
+      canvasContainer.style.filter = 'brightness(1.15)';
+    });
+  });
+  ['dragleave', 'drop'].forEach((name) => {
+    window.addEventListener(name, (e) => {
+      e.preventDefault();
+      canvasContainer.style.filter = 'none';
+    });
+  });
+  window.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer && e.dataTransfer.files) {
+      for (const f of e.dataTransfer.files) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          loadSTLFromBuffer(event.target.result, f.name);
+        };
+        reader.readAsArrayBuffer(f);
+      }
+    }
+  });
+
   // Printer IP Check
   document.getElementById('btnCheckPrinter').onclick = checkPrinterConnection;
 
   // Slicing Action
   document.getElementById('btnSlice').onclick = () => executeSlice(false);
   document.getElementById('btnSliceAndPrint').onclick = () => executeSlice(true);
+
+  // Load persistent user config
+  loadSavedConfig();
+}
+
+async function loadSavedConfig() {
+  try {
+    const res = await fetch('/api/config');
+    if (res.ok) {
+      const cfg = await res.json();
+      if (cfg.preset) document.getElementById('selPreset').value = cfg.preset;
+      if (cfg.material) document.getElementById('selMaterial').value = cfg.material;
+      if (cfg.infill !== undefined) {
+        document.getElementById('rangeInfill').value = cfg.infill;
+        document.getElementById('infillVal').textContent = `${cfg.infill}%`;
+      }
+      if (cfg.infillPattern) document.getElementById('selInfillPattern').value = cfg.infillPattern;
+      if (cfg.walls) document.getElementById('numWalls').value = cfg.walls;
+      if (cfg.brim) document.getElementById('selBrim').value = cfg.brim;
+      if (cfg.supports !== undefined) {
+        document.getElementById('chkSupports').checked = cfg.supports;
+        document.getElementById('supportOptions').style.display = cfg.supports ? 'block' : 'none';
+      }
+      if (cfg.supportType) document.getElementById('selSupportType').value = cfg.supportType;
+      if (cfg.printerIp) {
+        document.getElementById('txtPrinterIp').value = cfg.printerIp;
+        checkPrinterConnection();
+      }
+    }
+  } catch {}
 }
 
 function rotateSelected(rx, ry, rz) {

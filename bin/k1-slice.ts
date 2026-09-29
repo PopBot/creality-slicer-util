@@ -8,35 +8,106 @@ import { STLParser, K1_SPECS } from '../src/geometry/stl-parser.js';
 import { AutoOrient } from '../src/geometry/auto-orient.js';
 import { OrcaWrapper, SliceOptions } from '../src/engine/orca-wrapper.js';
 import { K1PrinterClient } from '../src/printer/k1-client.js';
+import { ConfigManager } from '../src/config/config-manager.js';
 import { startStudioServer } from '../src/server/app.js';
 
+const userConfig = ConfigManager.load();
 const program = new Command();
 
 program
   .name('k1-slice')
   .description('High-performance CLI & 3D Plate Studio for Creality K1 3D Printers')
-  .version('1.0.0')
-  .argument('<files...>', 'Path to 3D model file(s) (.stl, .3mf, .obj)')
-  .option('-p, --preset <preset>', 'Quality preset: standard (0.20mm), fine (0.12mm), optimal (0.16mm), draft (0.24mm)', 'standard')
-  .option('-m, --material <material>', 'Filament preset: hyper-pla, pla, petg, abs, tpu', 'hyper-pla')
-  .option('--infill <percent>', 'Infill density percentage (e.g. 20 for 20%)', (val) => parseInt(val, 10))
-  .option('--infill-pattern <pattern>', 'Infill pattern: gyroid, grid, cubic, honeycomb, rectilinear, lightning', 'gyroid')
+  .version('1.0.0');
+
+// 1. Studio command
+program
+  .command('studio [file]')
+  .description('Open the interactive 3D Plate Studio in your default browser')
+  .option('-p, --port <port>', 'Custom local port (default: 3125)', '3125')
+  .action(async (file, opts) => {
+    const modelPath = file ? path.resolve(process.cwd(), file) : undefined;
+    const port = await startStudioServer(parseInt(opts.port, 10), modelPath);
+    const url = modelPath ? `http://localhost:${port}/?model=${encodeURIComponent(modelPath)}` : `http://localhost:${port}/`;
+    console.log(`\n⚡ Launching Creality K1 3D Plate Studio...`);
+    console.log(`🚀 Live at: ${url}`);
+    console.log(`(Press Ctrl+C to terminate the local studio session)\n`);
+    await open(url);
+  });
+
+// 2. Config command
+const configCmd = program.command('config').description('View and manage persistent slicer defaults');
+
+configCmd
+  .command('list', { isDefault: true })
+  .description('List all saved configuration defaults')
+  .action(() => {
+    const config = ConfigManager.load();
+    console.log('\n⚙️  Creality K1 Slicer Defaults (~/.k1-slicer/config.json):');
+    console.log('──────────────────────────────────────────────────────');
+    for (const [k, v] of Object.entries(config)) {
+      console.log(`  ${k.padEnd(16)}: ${v}`);
+    }
+    console.log('──────────────────────────────────────────────────────\n');
+  });
+
+configCmd
+  .command('set <key> <value>')
+  .description('Set a default setting (e.g. "k1-slice config set printer-ip 192.168.1.100")')
+  .action((key, value) => {
+    const updated = ConfigManager.set(key, value);
+    console.log(`\n✅ Saved default: ${key} = ${value}\n`);
+  });
+
+configCmd
+  .command('get <key>')
+  .description('Get the current value of a default setting')
+  .action((key) => {
+    const val = ConfigManager.get(key);
+    console.log(`${val}`);
+  });
+
+configCmd
+  .command('reset')
+  .description('Reset all defaults to factory settings')
+  .action(() => {
+    ConfigManager.reset();
+    console.log('\n🔄 Configuration reset to factory defaults.\n');
+  });
+
+// 3. Main Slice command (root action)
+program
+  .argument('[files...]', 'Path to 3D model file(s) (.stl, .3mf, .obj)')
+  .option('-p, --preset <preset>', 'Quality preset: standard (0.20mm), fine (0.12mm), optimal (0.16mm), draft (0.24mm)', userConfig.preset || 'standard')
+  .option('-m, --material <material>', 'Filament preset: hyper-pla, pla, petg, abs, tpu', userConfig.material || 'hyper-pla')
+  .option('--infill <percent>', 'Infill density percentage (e.g. 20 for 20%)', (val) => parseInt(val, 10), userConfig.infill || 20)
+  .option('--infill-pattern <pattern>', 'Infill pattern: gyroid, grid, cubic, honeycomb, rectilinear, lightning', userConfig.infillPattern || 'gyroid')
   .option('--layer-height <height>', 'Layer height in mm (e.g. 0.16)', (val) => parseFloat(val))
-  .option('--supports', 'Enable support structures (default: auto)')
+  .option('--supports', 'Enable support structures', userConfig.supports ?? true)
   .option('--no-supports', 'Explicitly disable support generation')
-  .option('--support-type <type>', 'Support type: tree (organic) or normal', 'tree')
-  .option('--brim <type>', 'Brim adhesion: auto, outer, inner_and_outer, none', 'auto')
-  .option('--walls <count>', 'Number of wall loops / perimeters', (val) => parseInt(val, 10))
+  .option('--support-type <type>', 'Support type: tree (organic) or normal', userConfig.supportType || 'tree')
+  .option('--brim <type>', 'Brim adhesion: auto, outer, inner_and_outer, none', userConfig.brim || 'auto')
+  .option('--walls <count>', 'Number of wall loops / perimeters', (val) => parseInt(val, 10), userConfig.walls || 3)
   .option('-o, --output <path>', 'Output .gcode file path (default: same directory as input model)')
   .option('-i, --preview', 'Open 3D interactive plate studio in browser')
-  .option('--auto-center', 'Automatically center model at (110, 110) and ground bottom to Z=0', true)
+  .option('--auto-center', 'Automatically center model at (110, 110) and ground bottom to Z=0', userConfig.autoCenter ?? true)
   .option('--no-auto-center', 'Do not auto-center the model')
   .option('--auto-orient', 'Heuristically orient the model to maximize bed contact area')
-  .option('--printer-ip <ip>', 'Creality K1 printer IP address to send G-code directly over LAN')
+  .option('--printer-ip <ip>', 'Creality K1 printer IP address to send G-code directly over LAN', userConfig.printerIp)
   .option('--print', 'Automatically start print immediately after uploading to printer')
   .option('--headless', 'Force headless slicing without launching browser even if boundary issues exist')
   .action(async (files: string[], options: any) => {
     try {
+      // If no files are passed, open the 3D Plate Studio!
+      if (!files || files.length === 0) {
+        console.log(`\n⚡ No model specified — launching Creality K1 3D Plate Studio...`);
+        const port = await startStudioServer(3125);
+        const url = `http://localhost:${port}/`;
+        console.log(`🚀 Live at: ${url}`);
+        console.log(`(Press Ctrl+C to terminate the local studio session when finished)\n`);
+        await open(url);
+        return;
+      }
+
       const resolvedFiles = files.map((f) => path.resolve(process.cwd(), f));
 
       for (const f of resolvedFiles) {
@@ -63,7 +134,6 @@ program
         console.log(`   Position   : X [${bb.minX.toFixed(1)} to ${bb.maxX.toFixed(1)}], Y [${bb.minY.toFixed(1)} to ${bb.maxY.toFixed(1)}], Z [${bb.minZ.toFixed(1)} to ${bb.maxZ.toFixed(1)}]`);
         console.log(`   Triangles  : ${validation.triangleCount.toLocaleString()}`);
 
-        // Check if dimension exceeds physical printer
         if (bb.width > K1_SPECS.bedWidth || bb.depth > K1_SPECS.bedDepth || bb.height > K1_SPECS.maxHeight) {
           console.error(`\n❌ ERROR: Model dimensions exceed physical K1 build volume (220×220×250 mm)!`);
           console.error(`   Model size: ${bb.width.toFixed(1)}×${bb.depth.toFixed(1)}×${bb.height.toFixed(1)} mm`);
@@ -71,7 +141,7 @@ program
         }
       }
 
-      // 2. Escalation check: Auto-open browser if --preview requested OR boundary issues detected
+      // 2. Escalation check
       const hasIssues = validation && !validation.valid;
       const shouldLaunchBrowser = options.preview || (hasIssues && !options.headless);
 
@@ -87,8 +157,8 @@ program
         const port = await startStudioServer(3125, primaryFile);
         const url = `http://localhost:${port}/?model=${encodeURIComponent(primaryFile)}`;
         console.log(`🚀 Plate Studio live at: ${url}`);
-        await open(url);
         console.log(`(Press Ctrl+C to terminate the local studio session when finished)\n`);
+        await open(url);
         return;
       }
 
@@ -118,7 +188,7 @@ program
         supportType: options.supportType,
         brim: options.brim,
         walls: options.walls,
-        arrange: false, // Keep the centered/placed coordinates
+        arrange: false,
         outputGcodePath: finalOutputPath,
         onLog: (msg) => {
           if (process.env.DEBUG) console.log(msg.trim());
@@ -139,12 +209,11 @@ program
       console.log(`  💾 Output G-Code   : ${stats.gcodePath} (${(stats.fileSizeBytes / 1024 / 1024).toFixed(2)} MB)`);
       console.log(`──────────────────────────────────────────────────────\n`);
 
-      // Clean up temp centered file if generated
       if (tempAutoCenteredFile && fs.existsSync(tempAutoCenteredFile)) {
         try { fs.unlinkSync(tempAutoCenteredFile); } catch {}
       }
 
-      // 5. Direct Network Upload & Print
+      // 5. Direct Network Upload
       if (options.printerIp) {
         console.log(`📡 Uploading G-code to Creality K1 at ${options.printerIp}...`);
         const client = new K1PrinterClient(options.printerIp);
