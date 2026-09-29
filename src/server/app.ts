@@ -25,7 +25,22 @@ function findProjectRoot(): string {
 
 const projectRoot = findProjectRoot();
 
-const upload = multer({ dest: path.join(os.tmpdir(), 'k1-uploads') });
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    const uploadDir = path.join(os.tmpdir(), 'k1-uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.stl';
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `part-${unique}${ext}`);
+  },
+});
+
+const upload = multer({ storage });
 
 export function createServer(initialModelPath?: string) {
   const app = express();

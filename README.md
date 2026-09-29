@@ -41,22 +41,49 @@ Built to eliminate the bloat, slow startup, and telemetry/spyware concerns of ve
 
 ---
 
-## Installation
+## Installation & Quickstart
 
-### Prerequisites
-1. **Node.js** (v18+)
-2. **OrcaSlicer** (core slicing engine):
-   ```bash
-   brew install --cask orcaslicer
-   ```
+### Option 1: Automated 1-Click Setup (Recommended)
+Clone the repository and run the automated setup script. It automatically detects your OS, checks for OrcaSlicer (offering to install it via Homebrew on macOS), installs npm dependencies, builds the binaries, links `k1-slice` globally, and executes a verification test:
 
-### Setup
 ```bash
 git clone git@github.com:PopBot/creality-slicer-util.git
 cd creality-slicer-util
+
+# Run the automated setup wizard:
+./scripts/setup.sh
+# (or: npm run setup)
+```
+
+---
+
+### Option 2: Manual Installation
+
+#### 1. Prerequisites
+- **Node.js (v18+)**: [Download Node.js](https://nodejs.org/) or install via Homebrew: `brew install node`
+- **OrcaSlicer Core**: The underlying slicer engine.
+  - **macOS (Homebrew):**
+    ```bash
+    brew install --cask orcaslicer
+    ```
+  - **macOS / Linux / Windows Manual:** Download the latest release from [OrcaSlicer GitHub Releases](https://github.com/SoftFever/OrcaSlicer/releases) and place the application in `/Applications/OrcaSlicer.app` (macOS) or your PATH.
+
+#### 2. Install & Build
+```bash
+git clone git@github.com:PopBot/creality-slicer-util.git
+cd creality-slicer-util
+
+# 1. Install dependencies
 npm install
+
+# 2. Compile TypeScript
 npm run build
-npm link # (Optional: allows running 'k1-slice' anywhere from your shell)
+
+# 3. Link globally so you can use 'k1-slice' from any terminal
+npm link
+
+# 4. Run test suite to verify
+npm test
 ```
 
 ---

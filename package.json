@@ -8,6 +8,7 @@
     "k1-slice": "./dist/bin/k1-slice.js"
   },
   "scripts": {
+    "setup": "bash scripts/setup.sh",
     "build": "tsc",
     "test": "tsx tests/slicer.test.ts",
     "k1-slice": "tsx bin/k1-slice.ts",

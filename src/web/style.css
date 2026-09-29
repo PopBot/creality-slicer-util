@@ -236,16 +236,23 @@ button:disabled {
 
 .model-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 8px;
   background: var(--bg-dark);
-  border-radius: 4px;
-  font-size: 11px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.model-item:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .model-item.selected {
-  border: 1px solid var(--primary);
+  border-color: var(--primary);
+  background: rgba(0, 210, 133, 0.08);
 }
 
 /* Boundary Banner */

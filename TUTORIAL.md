@@ -18,8 +18,19 @@ Welcome to the **Creality K1 Slicer Util** tutorial. This guide walks you throug
 
 ## Initial Setup
 
-Before starting, ensure you have **Node.js** and the open-source **OrcaSlicer Core** installed:
+### Quickstart (Automated 1-Click Setup)
+Run the bundled setup script to automatically verify Node.js, install OrcaSlicer via Homebrew if needed, install dependencies, compile the project, and link `k1-slice`:
 
+```bash
+git clone git@github.com:PopBot/creality-slicer-util.git
+cd creality-slicer-util
+
+# Run setup script:
+./scripts/setup.sh
+# (or: npm run setup)
+```
+
+### Manual Setup
 ```bash
 # 1. Install OrcaSlicer (provides Creality K1 slicing profiles)
 brew install --cask orcaslicer
@@ -30,12 +41,10 @@ cd creality-slicer-util
 npm install
 npm run build
 
-# 3. (Optional) Link globally so 'k1-slice' is available everywhere
+# 3. Link globally so 'k1-slice' is available everywhere
 npm link
-```
 
-Run the built-in test suite to verify everything is wired correctly:
-```bash
+# 4. Run the test suite to verify the pipeline
 npm test
 ```
 
@@ -43,36 +52,38 @@ npm test
 
 ## Step 1: Your First Headless Slice (< 1s)
 
-When you just want a model sliced quickly without opening any heavyweight GUI, pass your STL file directly to `k1-slice`:
+When you just want a model sliced quickly without opening any heavyweight GUI, pass your STL file directly to `k1-slice` (a calibration cube is bundled in `samples/`):
 
 ```bash
-k1-slice ./my_model.stl
+k1-slice samples/k1_calibration_cube.stl
 ```
 
 ### What Happens Behind the Scenes:
-1. **Geometry Inspection:** The tool parses your mesh, checks its bounding dimensions, and ensures it fits the $220 \times 220 \times 250\text{ mm}$ build envelope.
+1. **Geometry Inspection:** The tool parses your mesh, checks its bounding dimensions, and ensures it fits the $8.66 \times 8.66 \times 9.84\text{ in}$ ($220 \times 220 \times 250\text{ mm}$) build envelope.
 2. **Auto-Centering & Grounding:** Centers the model at $(110, 110)$ on the plate and sets the lowest vertex to $Z = 0$.
 3. **OrcaSlicer Core Invocation:** Applies Creality K1 kinematics, acceleration limits ($20{,}000\text{ mm/s}^2$), and Hyper PLA fan speeds.
 4. **Summary Card:** Outputs full print metrics:
    ```text
    ======================================================
      ⚡ CREALITY K1 SLICER ENGINE (OrcaSlicer Core)
-     Bed Volume: 220 × 220 × 250 mm | Preset: standard
+     Bed Volume: 8.66 × 8.66 × 9.84 in (220 × 220 × 250 mm)
+     Preset    : standard | Default Unit: inches
    ======================================================
 
-   📦 Model Metrics: my_model.stl
-      Dimensions : 40.0 × 40.0 × 25.0 mm
-      Triangles  : 3,240
+   📦 Model Metrics: k1_calibration_cube.stl
+      Dimensions : 0.79 × 0.79 × 0.79 in (20.0 × 20.0 × 20.0 mm)
+      Position   : X [0.00 to 0.79 in], Y [0.00 to 0.79 in], Z [0.00 to 0.79 in]
+      Triangles  : 12
    🎯 Auto-centering model at (110, 110) and grounding to Z=0...
    🔪 Slicing with Creality K1 profiles...
 
-   ✅ SLICING COMPLETE in 0.3s!
+   ✅ SLICING COMPLETE in 0.1s!
    ──────────────────────────────────────────────────────
-     ⏱️  Est. Print Time : 31m 12s
-     🧵 Filament Used   : 3.42 m (10.2 g)
-     🥞 Layer Count     : 125 layers
-     📏 Max Z Height    : 25.00 mm
-     💾 Output G-Code   : ./my_model.gcode (1.45 MB)
+     ⏱️  Est. Print Time : 16m 42s
+     🧵 Filament Used   : 1.42 m (4.3 g)
+     🥞 Layer Count     : 100 layers
+     📏 Max Z Height    : 20.00 mm
+     💾 Output G-Code   : samples/k1_calibration_cube.gcode (0.63 MB)
    ──────────────────────────────────────────────────────
    ```
 
