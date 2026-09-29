@@ -19,7 +19,12 @@ Built to eliminate the bloat, slow startup, and telemetry/spyware concerns of ve
   - Out-of-bounds visual feedback (model turns glowing red if outside envelope).
   - **Click-to-Lay-Flat:** Click any surface on the 3D model to instantly align it flush with the build plate.
   - 3D Transform Gizmos for translation, rotation (with +90° shortcuts), and scale.
+  - Drag-and-drop file loading straight from Finder/Desktop.
   - Multi-file staging on a single build plate.
+- ⚙️ **Bidirectional Settings & Defaults Manager:**
+  - Configure default printer IP, presets, materials, infill, supports, and placement rules.
+  - Manage defaults directly via terminal commands or the in-browser **Settings & Defaults** modal.
+  - Saved globally to `~/.k1-slicer/config.json` and synchronized across all sessions.
 - 🎛️ **Exact Creality K1 Settings Parity:**
   - Presets: Standard (0.20mm), Fine (0.12mm), Optimal (0.16mm), Draft (0.24mm).
   - Filaments: Creality Hyper PLA (up to 600 mm/s), Generic PLA, Hyper PETG, Hyper ABS, Generic TPU 95A.
@@ -43,19 +48,19 @@ Built to eliminate the bloat, slow startup, and telemetry/spyware concerns of ve
 
 ### Setup
 ```bash
-git clone <repo-url>
+git clone git@github.com:PopBot/creality-slicer-util.git
 cd creality-slicer-util
 npm install
 npm run build
-npm link # (Optional: allows running 'k1-slice' anywhere)
+npm link # (Optional: allows running 'k1-slice' anywhere from your shell)
 ```
 
 ---
 
-## CLI Usage
+## Workflow & Modes of Operation
 
-### Standalone App / Studio Mode
-To simply open the 3D Plate Studio application to configure settings, connect to your printer, or drag-and-drop models onto the bed:
+### Mode 1: Standalone Application / 3D Plate Studio
+To simply open the 3D Plate Studio to adjust settings, connect to your printer, or drag-and-drop models onto the bed:
 ```bash
 # Launch directly in your browser:
 k1-slice
@@ -64,27 +69,8 @@ k1-slice
 k1-slice studio
 ```
 
-### Managing Persistent Defaults
-Configure your printer IP and favorite slicing options once, and they will persist across all CLI runs and browser sessions (`~/.k1-slicer/config.json`):
-```bash
-# View all current defaults:
-k1-slice config
-
-# Set default printer IP:
-k1-slice config set printer-ip 192.168.1.150
-
-# Set default material:
-k1-slice config set material hyper-pla
-
-# Set default quality preset:
-k1-slice config set preset standard
-
-# Reset to factory defaults:
-k1-slice config reset
-```
-
-### Basic Slicing (Headless)
-Slice an STL file with default Creality K1 Standard profile (0.20mm, Hyper PLA, Gyroid infill):
+### Mode 2: Quick Headless Slicing
+Slice an STL file directly from the terminal with default K1 profiles in under 1 second:
 ```bash
 k1-slice ./my_bracket.stl
 ```
@@ -112,14 +98,67 @@ Output:
 ──────────────────────────────────────────────────────
 ```
 
-### Launch Interactive 3D Plate Studio
+### Mode 3: Interactive Visual Preview & Slicing
 To preview, inspect, or adjust orientation before slicing:
 ```bash
 k1-slice ./my_bracket.stl --preview
 ```
-*(Also automatically triggers if boundary issues like floating meshes or bed clipping are detected)*.
+*(Also automatically escalates and launches the browser if geometry issues like floating meshes or bed clipping are detected)*.
 
-### Custom Settings & Overrides
+---
+
+## Configuring Settings & Defaults
+
+You can configure and persist default settings **both in the Browser Studio and via the CLI**. All defaults are stored in `~/.k1-slicer/config.json`.
+
+### Option A: In the Browser (Settings Modal)
+1. Open the studio: `k1-slice`
+2. Click the **`⚙️ Settings & Defaults`** button in the top navigation bar.
+3. The modal is organized into three tabs:
+   - **Printer & Network:**
+     - Set default K1 IP address (e.g. `192.168.1.150`).
+     - Set Moonraker port (`7125` for rooted/Helper script, `80` for stock Creality OS).
+     - Click **"Test Connection"** to verify communication and retrieve live status.
+   - **Slicing Defaults:**
+     - Default Quality Preset (`standard`, `optimal`, `fine`, `draft`).
+     - Default Filament (`hyper-pla`, `pla`, `petg`, `abs`, `tpu`).
+     - Default Infill % and Pattern (`gyroid`, `grid`, `cubic`, `honeycomb`, `lightning`).
+     - Default Wall Loops count and Brim adhesion type.
+     - Default Support toggle and Support Style (`tree` organic vs `normal` grid).
+   - **Bed & Placement:**
+     - Toggle auto-centering at $(110, 110)$ by default.
+     - Toggle auto-orient heuristic by default.
+4. Click **"Save Defaults"** to write changes to `~/.k1-slicer/config.json`.
+5. Click **"Reset Factory Defaults"** to restore original recommended profiles.
+
+### Option B: In the Terminal (CLI `config` command)
+```bash
+# 1. View all saved defaults:
+k1-slice config
+
+# 2. Set default printer IP:
+k1-slice config set printer-ip 192.168.1.150
+
+# 3. Set default material or quality preset:
+k1-slice config set material hyper-pla
+k1-slice config set preset standard
+k1-slice config set infill 20
+k1-slice config set infill-pattern gyroid
+k1-slice config set walls 4
+k1-slice config set support-type tree
+
+# 4. Read back a specific default setting:
+k1-slice config get printer-ip
+
+# 5. Reset all configuration to factory defaults:
+k1-slice config reset
+```
+
+---
+
+## Slicing Overrides & Direct LAN Printing
+
+### Custom Settings Overrides
 ```bash
 # High detail (0.12mm), 30% gyroid infill, 4 wall loops, tree supports:
 k1-slice figurine.stl -p fine --infill 30 --infill-pattern gyroid --walls 4 --supports --support-type tree
@@ -127,7 +166,7 @@ k1-slice figurine.stl -p fine --infill 30 --infill-pattern gyroid --walls 4 --su
 # Draft speed (0.24mm) for rapid prototyping:
 k1-slice enclosure.stl -p draft -m hyper-pla --infill 15
 
-# PETG functional part with brim:
+# PETG functional part with outer brim:
 k1-slice hinge.stl -m petg --brim outer --walls 4
 ```
 
@@ -146,33 +185,36 @@ k1-slice gear.stl --printer-ip 192.168.1.150 --print
 
 | Flag | Description | Default |
 | :--- | :--- | :--- |
-| `-p, --preset <preset>` | Quality preset: `standard` (0.20mm), `fine` (0.12mm), `optimal` (0.16mm), `draft` (0.24mm) | `standard` |
-| `-m, --material <mat>` | Filament: `hyper-pla`, `pla`, `petg`, `abs`, `tpu` | `hyper-pla` |
-| `--infill <percent>` | Infill density percentage (e.g. `20` for 20%) | Preset default |
-| `--infill-pattern <pat>`| Pattern: `gyroid`, `grid`, `cubic`, `honeycomb`, `lightning` | `gyroid` |
+| `-p, --preset <preset>` | Quality preset: `standard` (0.20mm), `fine` (0.12mm), `optimal` (0.16mm), `draft` (0.24mm) | Config default (`standard`) |
+| `-m, --material <mat>` | Filament: `hyper-pla`, `pla`, `petg`, `abs`, `tpu` | Config default (`hyper-pla`) |
+| `--infill <percent>` | Infill density percentage (e.g. `20` for 20%) | Config default (`20`) |
+| `--infill-pattern <pat>`| Pattern: `gyroid`, `grid`, `cubic`, `honeycomb`, `lightning` | Config default (`gyroid`) |
 | `--layer-height <mm>` | Custom layer height in mm | Preset default |
-| `--supports` | Enable support generation | Auto |
+| `--supports` | Enable support generation | Config default (`true`) |
 | `--no-supports` | Explicitly disable supports | - |
-| `--support-type <type>`| Support style: `tree` (organic) or `normal` (grid) | `tree` |
-| `--brim <type>` | Brim adhesion: `auto`, `outer`, `inner_and_outer`, `none` | `auto` |
-| `--walls <count>` | Number of wall loops / perimeters | Preset default |
+| `--support-type <type>`| Support style: `tree` (organic) or `normal` (grid) | Config default (`tree`) |
+| `--brim <type>` | Brim adhesion: `auto`, `outer`, `inner_and_outer`, `none` | Config default (`auto`) |
+| `--walls <count>` | Number of wall loops / perimeters | Config default (`3`) |
 | `-o, --output <path>` | Custom output `.gcode` destination | `<model>.gcode` |
 | `-i, --preview` | Force launch 3D Plate Studio in default browser | - |
-| `--auto-center` | Automatically center mesh at $(110, 110)$ and drop to $Z=0$ | `true` |
-| `--auto-orient` | Heuristically orient mesh to maximize bed contact area | - |
-| `--printer-ip <ip>` | K1 LAN IP address (uploads via Moonraker or Creality OS) | - |
+| `--auto-center` | Automatically center mesh at $(110, 110)$ and drop to $Z=0$ | Config default (`true`) |
+| `--no-auto-center` | Do not auto-center the model | - |
+| `--auto-orient` | Heuristically orient mesh to maximize bed contact area | Config default (`false`) |
+| `--printer-ip <ip>` | K1 LAN IP address (uploads via Moonraker or Creality OS) | Config default |
 | `--print` | Automatically start print job after network upload | `false` |
 | `--headless` | Force headless slicing even if placement warnings exist | `false` |
 
 ---
 
-## 3D Plate Studio Keyboard & Mouse Shortcuts
+## 3D Plate Studio Keyboard & Mouse Controls
 
-- **Left Mouse Click + Drag:** 360° Orbit camera in all 3 axes.
-- **Right Mouse Click + Drag:** Pan camera.
+- **Left Mouse Click + Drag:** Full 360° orbit rotation in all 3 axes.
+- **Right Mouse Click + Drag:** Pan camera across the build plate.
 - **Scroll Wheel:** Zoom in / out.
-- **Gizmo Keys:** `T` for Translate, `R` for Rotate, `S` for Scale.
-- **Click-to-Lay-Flat:** Toggle tool and click any triangle face on the model to orient that face flat against the bed.
+- **Gizmo Shortcuts:** `T` for Translate (Move), `R` for Rotate, `S` for Scale.
+- **Quick Angles:** Click `+90° X`, `+90° Y`, or `+90° Z` to snap-rotate the selected model.
+- **Click-to-Lay-Flat:** Click **"📐 Click-to-Lay-Flat"**, then click any planar face on your 3D mesh. The engine calculates the face normal, rotates the model flush onto the plate, and snaps $Z=0$.
+- **Drag-and-Drop:** Drag `.stl` or `.3mf` files from Finder directly onto the browser canvas to load them.
 
 ---
 
@@ -181,6 +223,7 @@ k1-slice gear.stl --printer-ip 192.168.1.150 --print
 ```text
 k1-slice (CLI)
    │
+   ├─► ConfigManager (~/.k1-slicer/config.json persistence)
    ├─► STLParser (Geometry verification & auto-centering)
    ├─► AutoOrient (Planar normal vector scoring)
    ├─► 3D Plate Studio (Express + Three.js local studio on ephemeral port)
@@ -193,4 +236,4 @@ Run test suite:
 ```bash
 npm test # runs npx tsx tests/slicer.test.ts
 ```
-All unit and end-to-end tests verify mesh dimension checks, auto-centering, out-of-bounds triggers, and G-code generation with Creality K1 start macros.
+All unit and end-to-end tests verify mesh dimension checks, auto-centering, out-of-bounds triggers, configuration serialization, and G-code generation with Creality K1 start macros.
