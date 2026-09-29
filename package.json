@@ -1,0 +1,43 @@
+{
+  "name": "creality-slicer-util",
+  "version": "1.0.0",
+  "description": "Developer-grade CLI & Browser 3D Plate Studio for Creality K1 3D Printers",
+  "main": "dist/src/cli.js",
+  "type": "module",
+  "bin": {
+    "k1-slice": "./dist/bin/k1-slice.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx tests/slicer.test.ts",
+    "k1-slice": "tsx bin/k1-slice.ts",
+    "studio": "tsx src/server/app.ts"
+  },
+  "keywords": [
+    "creality",
+    "k1",
+    "3d-printing",
+    "slicer",
+    "orcaslicer",
+    "threejs",
+    "gcode"
+  ],
+  "author": "Jarod Wong",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^14.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "open": "^10.1.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

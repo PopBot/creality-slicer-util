@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Creality K1 Slicer Studio</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three/build/three.module.js",
+      "three/addons/": "/vendor/three/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <!-- Top Header Bar -->
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-logo">⚡</span>
+        <h1>Creality K1 <span class="badge">Slicer Studio</span></h1>
+      </div>
+
+      <div class="view-controls">
+        <span class="label">View:</span>
+        <button id="btnViewIso" title="Isometric View">Isometric</button>
+        <button id="btnViewTop" title="Top Down View">Top</button>
+        <button id="btnViewFront" title="Front View">Front</button>
+        <button id="btnViewRight" title="Right Side View">Right</button>
+        <button id="btnToggleGrid" class="active" title="Toggle Grid & Bounding Box">Grid</button>
+      </div>
+
+      <div class="transform-modes">
+        <span class="label">Gizmo:</span>
+        <button id="btnModeTranslate" class="active" title="Translate (T)">Move [T]</button>
+        <button id="btnModeRotate" title="Rotate (R)">Rotate [R]</button>
+        <button id="btnModeScale" title="Scale (S)">Scale [S]</button>
+      </div>
+    </header>
+
+    <!-- Main Viewport -->
+    <main class="workspace">
+      <!-- 3D Canvas -->
+      <div id="canvas-container"></div>
+
+      <!-- Left Tool Palette -->
+      <div class="left-palette">
+        <div class="tool-group">
+          <h3>Arrangement</h3>
+          <button id="btnAutoCenter" class="tool-btn" title="Center model at (110, 110)">
+            <span class="icon">🎯</span> Auto-Center
+          </button>
+          <button id="btnDropToBed" class="tool-btn" title="Snap lowest vertex to Z=0">
+            <span class="icon">⬇️</span> Drop to Bed
+          </button>
+          <button id="btnLayFlat" class="tool-btn" title="Click any face on the mesh to orient it flush with the bed">
+            <span class="icon">📐</span> Click-to-Lay-Flat
+          </button>
+          <button id="btnAutoOrient" class="tool-btn" title="Heuristic: Find largest flat contact face">
+            <span class="icon">🧭</span> Auto-Orient
+          </button>
+        </div>
+
+        <div class="tool-group">
+          <h3>Quick Rotations</h3>
+          <div class="btn-row">
+            <button id="btnRotX90" class="mini-btn">+90° X</button>
+            <button id="btnRotY90" class="mini-btn">+90° Y</button>
+            <button id="btnRotZ90" class="mini-btn">+90° Z</button>
+          </div>
+        </div>
+
+        <div class="tool-group">
+          <h3>Models</h3>
+          <label class="file-upload-btn">
+            <span class="icon">📂</span> Add STL / 3MF
+            <input type="file" id="fileInput" accept=".stl,.3mf,.obj" multiple style="display:none;">
+          </label>
+          <div id="modelList" class="model-list"></div>
+        </div>
+      </div>
+
+      <!-- Realtime Status Banner -->
+      <div id="boundaryBanner" class="boundary-banner valid">
+        <span class="status-icon">✓</span>
+        <span id="boundaryText">Model placed within K1 build envelope (220×220×250 mm)</span>
+      </div>
+
+      <!-- Right Control & Slicing Panel -->
+      <aside class="right-panel">
+        <div class="panel-section printer-info-card">
+          <div class="printer-header">
+            <h3>Creality K1</h3>
+            <span class="tag">CoreXY</span>
+          </div>
+          <div class="specs-grid">
+            <div><span>Bed:</span> 220×220 mm</div>
+            <div><span>Max Z:</span> 250 mm</div>
+            <div><span>Nozzle:</span> 0.4 mm</div>
+            <div><span>Speed:</span> Up to 600 mm/s</div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h3>Slicing Parameters</h3>
+
+          <div class="form-group">
+            <label for="selPreset">Quality Preset</label>
+            <select id="selPreset">
+              <option value="standard" selected>0.20mm Standard (Recommended)</option>
+              <option value="optimal">0.16mm Optimal</option>
+              <option value="fine">0.12mm High Detail</option>
+              <option value="draft">0.24mm Fast Draft</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="selMaterial">Filament Material</label>
+            <select id="selMaterial">
+              <option value="hyper-pla" selected>Creality Hyper PLA (High Speed)</option>
+              <option value="pla">Generic PLA</option>
+              <option value="petg">Hyper PETG</option>
+              <option value="abs">Hyper ABS</option>
+              <option value="tpu">Generic TPU 95A</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="slider-header">
+              <label for="rangeInfill">Infill Density</label>
+              <span id="infillVal">20%</span>
+            </div>
+            <input type="range" id="rangeInfill" min="0" max="100" value="20" step="5">
+          </div>
+
+          <div class="form-group">
+            <label for="selInfillPattern">Infill Pattern</label>
+            <select id="selInfillPattern">
+              <option value="gyroid" selected>Gyroid (Best for High Speed K1)</option>
+              <option value="grid">Grid</option>
+              <option value="cubic">Cubic</option>
+              <option value="honeycomb">Honeycomb</option>
+              <option value="lightning">Lightning (Minimal)</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="numWalls">Wall Loops</label>
+              <input type="number" id="numWalls" min="1" max="10" value="3">
+            </div>
+            <div class="form-group half">
+              <label for="selBrim">Brim Type</label>
+              <select id="selBrim">
+                <option value="auto" selected>Auto</option>
+                <option value="outer">Outer Only</option>
+                <option value="none">No Brim</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group checkbox-group">
+            <label>
+              <input type="checkbox" id="chkSupports" checked>
+              <span>Enable Supports</span>
+            </label>
+          </div>
+
+          <div id="supportOptions" class="form-group">
+            <label for="selSupportType">Support Style</label>
+            <select id="selSupportType">
+              <option value="tree" selected>Tree / Organic (Easy peel, low waste)</option>
+              <option value="normal">Normal / Grid</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h3>K1 Network Printing</h3>
+          <div class="form-group">
+            <label for="txtPrinterIp">Printer IP Address</label>
+            <div class="input-action-row">
+              <input type="text" id="txtPrinterIp" placeholder="e.g. 192.168.1.100">
+              <button id="btnCheckPrinter" class="secondary-btn">Check</button>
+            </div>
+          </div>
+          <div id="printerStatusBadge" class="printer-status-badge">
+            <span class="dot"></span> <span id="printerStatusText">Ready for IP connection</span>
+          </div>
+        </div>
+
+        <div class="panel-section actions">
+          <button id="btnSlice" class="primary-btn">
+            <span class="icon">🔪</span> Slice for Creality K1
+          </button>
+          <button id="btnSliceAndPrint" class="accent-btn" disabled>
+            <span class="icon">🚀</span> Slice & Send to K1
+          </button>
+        </div>
+
+        <!-- Slice Results Card -->
+        <div id="sliceResultsCard" class="slice-results-card hidden">
+          <h4>Slicing Complete! 🎉</h4>
+          <div class="metrics-row">
+            <div>
+              <span class="metric-val" id="resTime">--</span>
+              <span class="metric-lbl">Est. Time</span>
+            </div>
+            <div>
+              <span class="metric-val" id="resFilament">--</span>
+              <span class="metric-lbl">Filament</span>
+            </div>
+            <div>
+              <span class="metric-val" id="resLayers">--</span>
+              <span class="metric-lbl">Layers</span>
+            </div>
+          </div>
+          <div class="result-actions">
+            <a id="btnDownloadGcode" class="action-btn" download="print.gcode">💾 Download G-Code</a>
+            <button id="btnSendExistingGcode" class="action-btn send-btn">📡 Send to Printer</button>
+          </div>
+        </div>
+
+        <!-- Progress Spinner / Log Drawer -->
+        <div id="slicingModal" class="slicing-overlay hidden">
+          <div class="slicing-dialog">
+            <div class="spinner"></div>
+            <h3 id="slicingModalTitle">Slicing with Creality K1 Profile...</h3>
+            <p id="slicingModalSubtitle">Optimizing toolpaths and computing input shaping...</p>
+            <pre id="slicingLogs"></pre>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
