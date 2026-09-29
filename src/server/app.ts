@@ -52,6 +52,12 @@ export function createServer(initialModelPath?: string) {
     return res.json(updated);
   });
 
+  // Reset user defaults to factory settings
+  app.post('/api/config/reset', (_req, res) => {
+    const resetConfig = ConfigManager.reset();
+    return res.json(resetConfig);
+  });
+
   // Serve initial model if passed via CLI
   app.get('/api/model', (req, res) => {
     const filePath = (req.query.file as string) || initialModelPath;

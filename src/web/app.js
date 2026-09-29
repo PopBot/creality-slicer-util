@@ -535,33 +535,165 @@ function setupUI() {
 
   // Load persistent user config
   loadSavedConfig();
+
+  // Settings Modal setup
+  setupSettingsModal();
 }
+
+let activeConfig = {};
 
 async function loadSavedConfig() {
   try {
     const res = await fetch('/api/config');
     if (res.ok) {
-      const cfg = await res.json();
-      if (cfg.preset) document.getElementById('selPreset').value = cfg.preset;
-      if (cfg.material) document.getElementById('selMaterial').value = cfg.material;
-      if (cfg.infill !== undefined) {
-        document.getElementById('rangeInfill').value = cfg.infill;
-        document.getElementById('infillVal').textContent = `${cfg.infill}%`;
-      }
-      if (cfg.infillPattern) document.getElementById('selInfillPattern').value = cfg.infillPattern;
-      if (cfg.walls) document.getElementById('numWalls').value = cfg.walls;
-      if (cfg.brim) document.getElementById('selBrim').value = cfg.brim;
-      if (cfg.supports !== undefined) {
-        document.getElementById('chkSupports').checked = cfg.supports;
-        document.getElementById('supportOptions').style.display = cfg.supports ? 'block' : 'none';
-      }
-      if (cfg.supportType) document.getElementById('selSupportType').value = cfg.supportType;
-      if (cfg.printerIp) {
-        document.getElementById('txtPrinterIp').value = cfg.printerIp;
-        checkPrinterConnection();
-      }
+      activeConfig = await res.json();
+      applyConfigToUI(activeConfig);
     }
   } catch {}
+}
+
+function applyConfigToUI(cfg) {
+  if (cfg.preset) document.getElementById('selPreset').value = cfg.preset;
+  if (cfg.material) document.getElementById('selMaterial').value = cfg.material;
+  if (cfg.infill !== undefined) {
+    document.getElementById('rangeInfill').value = cfg.infill;
+    document.getElementById('infillVal').textContent = `${cfg.infill}%`;
+  }
+  if (cfg.infillPattern) document.getElementById('selInfillPattern').value = cfg.infillPattern;
+  if (cfg.walls) document.getElementById('numWalls').value = cfg.walls;
+  if (cfg.brim) document.getElementById('selBrim').value = cfg.brim;
+  if (cfg.supports !== undefined) {
+    document.getElementById('chkSupports').checked = cfg.supports;
+    document.getElementById('supportOptions').style.display = cfg.supports ? 'block' : 'none';
+  }
+  if (cfg.supportType) document.getElementById('selSupportType').value = cfg.supportType;
+  if (cfg.printerIp) {
+    document.getElementById('txtPrinterIp').value = cfg.printerIp;
+    checkPrinterConnection();
+  }
+}
+
+function setupSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  const btnOpen = document.getElementById('btnOpenSettings');
+  const btnClose = document.getElementById('btnCloseSettings');
+  const btnCancel = document.getElementById('btnCancelSettings');
+  const btnSave = document.getElementById('btnSaveGlobalSettings');
+  const btnReset = document.getElementById('btnResetDefaults');
+  const btnTestPrinter = document.getElementById('btnTestCfgPrinter');
+
+  // Open modal
+  btnOpen.onclick = () => {
+    // Populate modal inputs from activeConfig
+    document.getElementById('cfgPrinterIp').value = activeConfig.printerIp || '';
+    document.getElementById('cfgPrinterPort').value = activeConfig.printerPort || 7125;
+    document.getElementById('cfgPreset').value = activeConfig.preset || 'standard';
+    document.getElementById('cfgMaterial').value = activeConfig.material || 'hyper-pla';
+    document.getElementById('cfgInfill').value = activeConfig.infill ?? 20;
+    document.getElementById('cfgInfillPattern').value = activeConfig.infillPattern || 'gyroid';
+    document.getElementById('cfgWalls').value = activeConfig.walls ?? 3;
+    document.getElementById('cfgBrim').value = activeConfig.brim || 'auto';
+    document.getElementById('cfgSupports').checked = activeConfig.supports !== false;
+    document.getElementById('cfgSupportType').value = activeConfig.supportType || 'tree';
+    document.getElementById('cfgAutoCenter').checked = activeConfig.autoCenter !== false;
+    document.getElementById('cfgAutoOrient').checked = !!activeConfig.autoOrient;
+
+    modal.classList.remove('hidden');
+  };
+
+  // Close modal
+  const closeModal = () => modal.classList.add('hidden');
+  btnClose.onclick = closeModal;
+  btnCancel.onclick = closeModal;
+
+  // Tabs switching
+  const tabBtns = modal.querySelectorAll('.settings-tabs .tab-btn');
+  tabBtns.forEach((btn) => {
+    btn.onclick = () => {
+      tabBtns.forEach((b) => b.classList.remove('active'));
+      modal.querySelectorAll('.tab-content').forEach((tc) => tc.classList.remove('active'));
+      btn.classList.add('active');
+      const targetId = btn.getAttribute('data-tab');
+      document.getElementById(targetId).classList.add('active');
+    };
+  });
+
+  // Test printer connection in settings
+  btnTestPrinter.onclick = async () => {
+    const ip = document.getElementById('cfgPrinterIp').value.trim();
+    const statusText = document.getElementById('cfgPrinterStatusText');
+    const badge = document.getElementById('cfgPrinterStatus');
+    if (!ip) {
+      statusText.textContent = 'Please enter an IP address';
+      return;
+    }
+    statusText.textContent = 'Pinging printer...';
+    try {
+      const res = await fetch(`/api/printer/status?ip=${encodeURIComponent(ip)}`);
+      const data = await res.json();
+      if (data.connected) {
+        badge.className = 'printer-status-badge connected';
+        statusText.textContent = `${data.message} (${data.state || 'Online'})`;
+      } else {
+        badge.className = 'printer-status-badge';
+        statusText.textContent = data.message || 'Printer unreachable';
+      }
+    } catch {
+      statusText.textContent = 'Connection error';
+    }
+  };
+
+  // Save global defaults
+  btnSave.onclick = async () => {
+    const payload = {
+      printerIp: document.getElementById('cfgPrinterIp').value.trim(),
+      printerPort: parseInt(document.getElementById('cfgPrinterPort').value, 10),
+      preset: document.getElementById('cfgPreset').value,
+      material: document.getElementById('cfgMaterial').value,
+      infill: parseInt(document.getElementById('cfgInfill').value, 10),
+      infillPattern: document.getElementById('cfgInfillPattern').value,
+      walls: parseInt(document.getElementById('cfgWalls').value, 10),
+      brim: document.getElementById('cfgBrim').value,
+      supports: document.getElementById('cfgSupports').checked,
+      supportType: document.getElementById('cfgSupportType').value,
+      autoCenter: document.getElementById('cfgAutoCenter').checked,
+      autoOrient: document.getElementById('cfgAutoOrient').checked,
+    };
+
+    try {
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        activeConfig = await res.json();
+        applyConfigToUI(activeConfig);
+        closeModal();
+        alert('✓ Default settings saved to ~/.k1-slicer/config.json!');
+      }
+    } catch (e) {
+      alert(`Error saving defaults: ${e.message}`);
+    }
+  };
+
+  // Reset defaults
+  btnReset.onclick = async () => {
+    if (!confirm('Are you sure you want to reset all configuration defaults to factory settings?')) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/config/reset', { method: 'POST' });
+      if (res.ok) {
+        activeConfig = await res.json();
+        applyConfigToUI(activeConfig);
+        closeModal();
+        alert('🔄 Settings reset to factory defaults.');
+      }
+    } catch (e) {
+      alert(`Error resetting: ${e.message}`);
+    }
+  };
 }
 
 function rotateSelected(rx, ry, rz) {

@@ -38,6 +38,12 @@
         <button id="btnModeRotate" title="Rotate (R)">Rotate [R]</button>
         <button id="btnModeScale" title="Scale (S)">Scale [S]</button>
       </div>
+
+      <div class="top-actions">
+        <button id="btnOpenSettings" class="settings-btn" title="Configure Default Settings">
+          ⚙️ Settings & Defaults
+        </button>
+      </div>
     </header>
 
     <!-- Main Viewport -->
@@ -238,6 +244,143 @@
         </div>
       </aside>
     </main>
+
+    <!-- Settings & Defaults Modal -->
+    <div id="settingsModal" class="modal-overlay hidden">
+      <div class="settings-card">
+        <div class="modal-header">
+          <h2>⚙️ Creality K1 Configuration & Defaults</h2>
+          <button id="btnCloseSettings" class="icon-close-btn">&times;</button>
+        </div>
+        <p class="modal-desc">Adjust global preferences persisted to <code>~/.k1-slicer/config.json</code>. These defaults apply to all future CLI slices and browser sessions.</p>
+
+        <div class="settings-tabs">
+          <button class="tab-btn active" data-tab="tab-printer">Printer & Network</button>
+          <button class="tab-btn" data-tab="tab-slicing">Slicing Defaults</button>
+          <button class="tab-btn" data-tab="tab-geometry">Bed & Placement</button>
+        </div>
+
+        <!-- Tab 1: Printer & Network -->
+        <div id="tab-printer" class="tab-content active">
+          <div class="form-group">
+            <label for="cfgPrinterIp">Default Creality K1 IP Address</label>
+            <div class="input-action-row">
+              <input type="text" id="cfgPrinterIp" placeholder="e.g. 192.168.1.100">
+              <button id="btnTestCfgPrinter" class="secondary-btn">Test Connection</button>
+            </div>
+            <span class="field-hint">IP address of your K1 printer on your local network.</span>
+          </div>
+          <div class="form-group">
+            <label for="cfgPrinterPort">Moonraker Port</label>
+            <input type="number" id="cfgPrinterPort" value="7125">
+            <span class="field-hint">Port 7125 (Moonraker / Fluidd) or 80 (Stock Creality OS).</span>
+          </div>
+          <div id="cfgPrinterStatus" class="printer-status-badge">
+            <span class="dot"></span> <span id="cfgPrinterStatusText">Ready for test</span>
+          </div>
+        </div>
+
+        <!-- Tab 2: Slicing Defaults -->
+        <div id="tab-slicing" class="tab-content">
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="cfgPreset">Default Quality Preset</label>
+              <select id="cfgPreset">
+                <option value="standard">0.20mm Standard</option>
+                <option value="optimal">0.16mm Optimal</option>
+                <option value="fine">0.12mm High Detail</option>
+                <option value="draft">0.24mm Fast Draft</option>
+              </select>
+            </div>
+            <div class="form-group half">
+              <label for="cfgMaterial">Default Filament</label>
+              <select id="cfgMaterial">
+                <option value="hyper-pla">Creality Hyper PLA</option>
+                <option value="pla">Generic PLA</option>
+                <option value="petg">Hyper PETG</option>
+                <option value="abs">Hyper ABS</option>
+                <option value="tpu">Generic TPU 95A</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="cfgInfill">Default Infill %</label>
+              <input type="number" id="cfgInfill" min="0" max="100" value="20">
+            </div>
+            <div class="form-group half">
+              <label for="cfgInfillPattern">Default Infill Pattern</label>
+              <select id="cfgInfillPattern">
+                <option value="gyroid">Gyroid</option>
+                <option value="grid">Grid</option>
+                <option value="cubic">Cubic</option>
+                <option value="honeycomb">Honeycomb</option>
+                <option value="lightning">Lightning</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="cfgWalls">Default Wall Loops</label>
+              <input type="number" id="cfgWalls" min="1" max="10" value="3">
+            </div>
+            <div class="form-group half">
+              <label for="cfgBrim">Default Brim Type</label>
+              <select id="cfgBrim">
+                <option value="auto">Auto Brim</option>
+                <option value="outer">Outer Only</option>
+                <option value="none">No Brim</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group half checkbox-group" style="margin-top:14px;">
+              <label>
+                <input type="checkbox" id="cfgSupports" checked>
+                <span>Enable Supports by default</span>
+              </label>
+            </div>
+            <div class="form-group half">
+              <label for="cfgSupportType">Support Style</label>
+              <select id="cfgSupportType">
+                <option value="tree">Tree / Organic</option>
+                <option value="normal">Normal / Grid</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Bed & Placement -->
+        <div id="tab-geometry" class="tab-content">
+          <div class="form-group checkbox-group">
+            <label>
+              <input type="checkbox" id="cfgAutoCenter" checked>
+              <span>Auto-center models at (110, 110) on build plate</span>
+            </label>
+          </div>
+          <div class="form-group checkbox-group">
+            <label>
+              <input type="checkbox" id="cfgAutoOrient">
+              <span>Auto-orient models to maximize bed contact area</span>
+            </label>
+          </div>
+          <div class="specs-grid" style="margin-top: 14px; padding: 12px; background: var(--bg-card); border-radius: 8px;">
+            <div><span>Bed Width (X):</span> 220 mm</div>
+            <div><span>Bed Depth (Y):</span> 220 mm</div>
+            <div><span>Max Z Height:</span> 250 mm</div>
+            <div><span>Config File:</span> ~/.k1-slicer/config.json</div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="btnResetDefaults" class="danger-btn">Reset Factory Defaults</button>
+          <div class="footer-actions">
+            <button id="btnCancelSettings" class="secondary-btn">Cancel</button>
+            <button id="btnSaveGlobalSettings" class="primary-btn">Save Defaults</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/app.js"></script>

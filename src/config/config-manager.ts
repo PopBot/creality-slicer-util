@@ -4,27 +4,34 @@ import os from 'node:os';
 
 export interface K1Config {
   printerIp?: string;
+  printerPort?: number;
   preset?: 'standard' | 'fine' | 'optimal' | 'draft';
   material?: 'hyper-pla' | 'pla' | 'petg' | 'abs' | 'tpu';
   infill?: number;
   infillPattern?: 'gyroid' | 'grid' | 'cubic' | 'honeycomb' | 'rectilinear' | 'lightning';
+  layerHeight?: number;
   supports?: boolean;
   supportType?: 'tree' | 'normal';
   brim?: 'auto' | 'outer' | 'inner_and_outer' | 'none';
   walls?: number;
   autoCenter?: boolean;
+  autoOrient?: boolean;
+  orcaPath?: string;
 }
 
 export const DEFAULT_CONFIG: K1Config = {
+  printerPort: 7125,
   preset: 'standard',
   material: 'hyper-pla',
   infill: 20,
   infillPattern: 'gyroid',
+  layerHeight: 0.20,
   supports: true,
   supportType: 'tree',
   brim: 'auto',
   walls: 3,
   autoCenter: true,
+  autoOrient: false,
 };
 
 export class ConfigManager {
@@ -36,7 +43,7 @@ export class ConfigManager {
     return dir;
   }
 
-  private static getConfigFile(): string {
+  static getConfigFile(): string {
     return path.join(this.getConfigDir(), 'config.json');
   }
 
@@ -66,9 +73,11 @@ export class ConfigManager {
     const config = this.load();
     const normalizedKey = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
-    if (normalizedKey === 'infill' || normalizedKey === 'walls') {
+    if (normalizedKey === 'infill' || normalizedKey === 'walls' || normalizedKey === 'printerPort') {
       (config as any)[normalizedKey] = parseInt(value, 10);
-    } else if (normalizedKey === 'supports' || normalizedKey === 'autoCenter') {
+    } else if (normalizedKey === 'layerHeight') {
+      (config as any)[normalizedKey] = parseFloat(value);
+    } else if (normalizedKey === 'supports' || normalizedKey === 'autoCenter' || normalizedKey === 'autoOrient') {
       (config as any)[normalizedKey] = value === 'true' || value === '1' || value === 'yes';
     } else {
       (config as any)[normalizedKey] = value;

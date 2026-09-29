@@ -567,3 +567,146 @@ input[type="range"] {
   font-family: monospace;
   color: var(--text-muted);
 }
+
+/* Settings Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 18, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.settings-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 540px;
+  max-width: 92vw;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  font-size: 15px;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.icon-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.icon-close-btn:hover {
+  color: var(--text-main);
+}
+
+.modal-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.modal-desc code {
+  background: var(--bg-dark);
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.tab-btn.active {
+  background: rgba(0, 210, 133, 0.15);
+  color: var(--primary);
+}
+
+.tab-content {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tab-content.active {
+  display: flex;
+}
+
+.field-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.footer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.danger-btn {
+  background: rgba(255, 71, 87, 0.15);
+  border: 1px solid var(--danger);
+  color: #ff6b81;
+  padding: 8px 12px;
+  font-size: 11px;
+}
+
+.danger-btn:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.settings-btn {
+  background: rgba(0, 168, 255, 0.15);
+  border-color: rgba(0, 168, 255, 0.4);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.settings-btn:hover {
+  background: rgba(0, 168, 255, 0.25);
+  border-color: var(--accent);
+}
