@@ -103,10 +103,6 @@ Your default browser will open to `http://localhost:3125`:
 ![3D Plate Studio Overview](assets/studio_overview.png)
 
 ### Key Features of the Studio:
-- **🧭 Top-Right 3-Axis Orientation Visualizer (Blender/Shapr3D Style):**
-  - Displays the active viewport orientation with colored axes: **Red ($X$)**, **Green ($Y$)**, and **Blue ($Z$)**.
-  - **Orbit Dragging:** Click and drag directly on the orientation gizmo to fluidly orbit around the build plate.
-  - **Axis Snapping:** Click any axis sphere to snap the camera into an exact orthogonal view (Isometric, Top, Front, Right).
 - **📏 Inches as Default Measurement Unit:**
   - Designed for makers who prefer imperial units: the bed size ($8.66 \times 8.66 \times 9.84\text{ in}$), model dimensions, and boundary alerts display in inches by default.
   - **Unit Toggle:** Easily flip between `in` and `mm` using the toggle buttons in the top navigation bar.

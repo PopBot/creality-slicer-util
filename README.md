@@ -241,16 +241,7 @@ k1-slice gear.stl --printer-ip 192.168.1.150 --print
 
 ---
 
-## 3D Plate Studio Controls & Visualizer
-
-### 🧭 3-Axis Orientation Visualizer (Blender / Shapr3D Style)
-Located in the **top-right corner** of the 3D viewport:
-- **Real-Time Axis Tracking:** Displays the current camera orientation with colored axis planes:
-  - **Red ($X$):** Left / Right axis.
-  - **Green ($Y$):** Front / Back bed depth axis.
-  - **Blue ($Z$):** Vertical height axis.
-- **Interactive Orbiting:** Click and drag anywhere on the gizmo to smoothly orbit the camera around the build plate.
-- **Orthogonal Snap:** Click any labeled axis sphere ($X, Y, Z$) to instantly snap the camera to that orthogonal projection.
+## 3D Plate Studio Controls & Units
 
 ### 📏 Inches & Millimeters Support
 - **Default in Inches:** All dimensions (K1 bed size: $8.66 \times 8.66 \times 9.84\text{ in}$, model dimensions, bounding limits) default to inches.

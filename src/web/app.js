@@ -3,7 +3,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
-import { ViewHelper } from 'three/addons/helpers/ViewHelper.js';
 
 // K1 Physical Specifications
 const BED_SIZE_X = 220;
@@ -14,7 +13,6 @@ const BED_CENTER_Y = BED_SIZE_Y / 2;
 
 // App State
 let scene, camera, renderer, orbitControls, transformControls;
-let viewHelper, clock;
 let currentUnit = 'inches'; // default to inches as requested
 let models = [];
 let selectedModel = null;
@@ -89,11 +87,6 @@ function init() {
   });
   scene.add(transformControls.getHelper());
 
-  // 3-Axis Orientation ViewHelper (Blender/Shapr3D style in top right of 3D viewport)
-  clock = new THREE.Clock();
-  viewHelper = new ViewHelper(camera, renderer.domElement);
-  updateViewHelperPosition();
-
   // Lights
   setupLighting();
 
@@ -167,33 +160,17 @@ function setupBuildPlate() {
   scene.add(crosshair);
 }
 
-function updateViewHelperPosition() {
-  if (!viewHelper) return;
-  const rightPanel = document.querySelector('.right-panel');
-  const offsetRight = (rightPanel ? rightPanel.offsetWidth : 330) + 24;
-  viewHelper.location = { top: 20, right: offsetRight, bottom: null, left: null };
-}
-
 function onWindowResize() {
   const container = document.getElementById('canvas-container');
   camera.aspect = container.clientWidth / container.clientHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(container.clientWidth, container.clientHeight);
-  updateViewHelperPosition();
 }
 
 function animate() {
   requestAnimationFrame(animate);
-  const delta = clock.getDelta();
   orbitControls.update();
-  renderer.autoClear = true;
   renderer.render(scene, camera);
-  renderer.autoClear = false;
-  renderer.clearDepth();
-  viewHelper.render(renderer);
-  if (viewHelper.animating) {
-    viewHelper.update(delta);
-  }
 }
 
 // ----------------- Model Management -----------------
@@ -326,11 +303,6 @@ function checkBoundaries() {
 // ----------------- Lay Flat on Click & Auto Orient -----------------
 
 function onCanvasPointerDown(event) {
-  // Check if click was on orientation ViewHelper (top-right gizmo)
-  if (viewHelper && viewHelper.handleClick(event)) {
-    return;
-  }
-
   const container = document.getElementById('canvas-container');
   const rect = container.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
