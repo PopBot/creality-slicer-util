@@ -4,7 +4,7 @@ A high-performance, developer-grade CLI and interactive 3D Plate Studio for the 
 
 Built to eliminate the bloat, slow startup, and telemetry/spyware concerns of vendor GUI slicers while providing 100% slicing parity with Creality Print v5 using the audited, open-source **OrcaSlicer Core** engine.
 
-![Creality K1 3D Plate Studio](assets/studio_model_loaded.png)
+![Creality K1 3D Plate Studio](assets/studio_preview.png)
 
 > 📘 **New to K1 Slicer Util?** Check out the step-by-step **[Complete Tutorial & Guide (TUTORIAL.md)](TUTORIAL.md)**.
 

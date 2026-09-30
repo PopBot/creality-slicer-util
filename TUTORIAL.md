@@ -118,7 +118,7 @@ You can load 3D models onto the build plate in two ways:
 1. **Drag-and-Drop:** Drag one or more `.stl` or `.3mf` files straight from Finder into the browser window.
 2. **File Picker:** Click **"📂 Add STL / 3MF"** in the left palette.
 
-![Model Loaded on Build Plate](assets/studio_model_loaded.png)
+![Model Loaded on Build Plate](assets/studio_preview.png)
 
 ### Real-Time Boundary Safety Checks
 The studio continuously monitors geometry in real time:
