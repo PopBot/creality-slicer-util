@@ -235,6 +235,7 @@ k1-slice gear.stl --printer-ip 192.168.1.150 --print
 | `--support-type <type>`| Support style: `tree` (organic) or `normal` (grid) | Config default (`tree`) |
 | `--brim <type>` | Brim adhesion: `auto`, `outer`, `inner_and_outer`, `none` | Config default (`auto`) |
 | `--walls <count>` | Number of wall loops / perimeters | Config default (`3`) |
+| `-n, --name <name>` | Custom name for output file & print job (e.g. `AA_Battery_Box`) | Input filename |
 | `-o, --output <path>` | Custom output `.gcode` destination | `<model>.gcode` |
 | `-i, --preview` | Force launch 3D Plate Studio in default browser | - |
 | `--auto-center` | Automatically center mesh at $(110, 110)$ and drop to $Z=0$ | Config default (`true`) |

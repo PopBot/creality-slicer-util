@@ -248,7 +248,14 @@ k1-slice bracket.stl -s 250mm/s
 k1-slice bracket.stl -s 80%
 ```
 
-### 5. One-Liner Slice, Upload & Print
+### 5. Custom Print / File Naming
+```bash
+# Give your print job and output G-code a clean, descriptive name:
+k1-slice AA.stl -n "Battery_Box_AA" -s 250mm/s
+# Outputs 'Battery_Box_AA.gcode' and displays 'Battery_Box_AA' on K1 touchscreen!
+```
+
+### 6. One-Liner Slice, Upload & Print
 ```bash
 # Slice and immediately start printing on your K1:
 k1-slice bracket.stl --printer-ip 192.168.1.150 --print

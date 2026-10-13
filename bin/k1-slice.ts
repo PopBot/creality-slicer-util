@@ -88,6 +88,7 @@ program
   .option('--brim <type>', 'Brim adhesion: auto, outer, inner_and_outer, none', userConfig.brim || 'auto')
   .option('--walls <count>', 'Number of wall loops / perimeters', (val) => parseInt(val, 10), userConfig.walls || 3)
   .option('-s, --speed <speed>', 'Print speed: mm/s (e.g. 250 or 250mm/s), percentage (e.g. 80%), or preset (silent, standard, sport, ludicrous)', userConfig.speed || '100%')
+  .option('-n, --name <name>', 'Custom name for output .gcode file and print job (e.g. "AA_Battery_Crate")')
   .option('-o, --output <path>', 'Output .gcode file path (default: same directory as input model)')
   .option('-i, --preview', 'Open 3D interactive plate studio in browser')
   .option('--auto-center', 'Automatically center model at (110, 110) and ground bottom to Z=0', userConfig.autoCenter ?? true)
@@ -186,9 +187,15 @@ program
       }
 
       // 4. Run Slicing Pipeline
-      const finalOutputPath = options.output
-        ? path.resolve(process.cwd(), options.output)
-        : primaryFile.replace(/\.(stl|obj|3mf)$/i, '.gcode');
+      let finalOutputPath: string;
+      if (options.output) {
+        finalOutputPath = path.resolve(process.cwd(), options.output);
+      } else if (options.name) {
+        const safeName = options.name.trim().replace(/\.gcode$/i, '');
+        finalOutputPath = path.join(path.dirname(primaryFile), `${safeName}.gcode`);
+      } else {
+        finalOutputPath = primaryFile.replace(/\.(stl|obj|3mf)$/i, '.gcode');
+      }
 
       const sliceOpts: SliceOptions = {
         preset: options.preset,

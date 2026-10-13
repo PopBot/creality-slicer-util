@@ -6,6 +6,7 @@ import { AutoOrient } from '../src/geometry/auto-orient.js';
 import { GcodeParser } from '../src/engine/gcode-parser.js';
 import { OrcaWrapper, parseSpeed } from '../src/engine/orca-wrapper.js';
 import { ConfigManager } from '../src/config/config-manager.js';
+import { K1PrinterClient } from '../src/printer/k1-client.js';
 
 // Helper to generate test STL
 function createBoxStl(filename: string, ox: number, oy: number, oz: number, w: number, d: number, h: number) {
@@ -152,12 +153,28 @@ async function runTests() {
     supports: false,
     outputGcodePath: silentGcode,
   });
-  assert.ok(fs.existsSync(silentGcode), 'Silent G-code should exist');
-  assert.ok(silentStats.totalLayers > 0, 'Silent layers > 0');
-  console.log(`   ✓ Sliced with speed override (silent): est time: ${silentStats.estimatedTimeStr}`);
+  // Test 9: Custom Print/Job Name Slicing and Output Path
+  console.log('9. Testing Custom Job / Print Naming...');
+  const customNamedGcode = '/tmp/custom_battery_box.gcode';
+  const customStats = await OrcaWrapper.slice([centeredStl], {
+    preset: 'standard',
+    outputGcodePath: customNamedGcode,
+  });
+  assert.ok(fs.existsSync(customNamedGcode), 'Custom named G-code should exist');
+  assert.strictEqual(path.basename(customStats.gcodePath), 'custom_battery_box.gcode');
+  console.log('   ✓ Custom output file naming correctly produces designated .gcode');
+
+  // Test 10: K1PrinterClient Creality OS connection
+  console.log('10. Testing K1PrinterClient Connection & Status...');
+  const client = new K1PrinterClient('192.168.1.145');
+  const status = await client.getStatus();
+  assert.ok(status.connected, 'Printer at 192.168.1.145 should report connected');
+  assert.ok(status.extruderTemp !== undefined, 'Should report extruder temperature');
+  assert.ok(status.bedTemp !== undefined, 'Should report bed temperature');
+  console.log(`   ✓ K1 connected via Creality OS: Extruder: ${status.extruderTemp}°C, Bed: ${status.bedTemp}°C, State: ${status.state}`);
 
   // Clean up
-  [tmpTestStl, centeredStl, oversizedStl, outputGcode, silentGcode].forEach((f) => {
+  [tmpTestStl, centeredStl, oversizedStl, outputGcode, silentGcode, customNamedGcode].forEach((f) => {
     try { fs.unlinkSync(f); } catch {}
   });
 

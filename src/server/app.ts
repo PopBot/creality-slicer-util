@@ -104,6 +104,13 @@ export function createServer(initialModelPath?: string) {
       }
 
       const inputPaths = files.map((f) => f.path);
+      const customName = req.body.name || req.body.jobName;
+      let outputGcodePath: string | undefined = undefined;
+      if (customName && customName.trim()) {
+        const safeName = customName.trim().replace(/[^a-zA-Z0-9_\-. ]/g, '_').replace(/\.gcode$/i, '');
+        outputGcodePath = path.join(path.dirname(inputPaths[0]), `${safeName}.gcode`);
+      }
+
       const options: SliceOptions = {
         preset: req.body.preset,
         material: req.body.material,
@@ -116,6 +123,7 @@ export function createServer(initialModelPath?: string) {
         walls: req.body.walls ? parseInt(req.body.walls, 10) : undefined,
         speed: req.body.speed,
         arrange: req.body.arrange === 'true',
+        outputGcodePath,
       };
 
       const stats = await OrcaWrapper.slice(inputPaths, options);
@@ -141,8 +149,12 @@ export function createServer(initialModelPath?: string) {
   app.get('/api/download', (req, res) => {
     const gcodePath = req.query.path as string;
     if (gcodePath && fs.existsSync(gcodePath)) {
+      const customName = req.query.name as string;
+      const downloadFilename = customName
+        ? `${customName.trim().replace(/\.gcode$/i, '')}.gcode`
+        : path.basename(gcodePath);
       res.setHeader('Content-Type', 'text/plain');
-      res.setHeader('Content-Disposition', `attachment; filename="${path.basename(gcodePath)}"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
       return fs.createReadStream(gcodePath).pipe(res);
     }
     return res.status(404).json({ error: 'G-code file not found' });

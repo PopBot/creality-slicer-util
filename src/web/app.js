@@ -194,6 +194,11 @@ export function loadSTLFromBuffer(buffer, filename = 'model.stl') {
   selectModel(mesh);
   updateModelListUI();
   checkBoundaries();
+
+  const txtJobName = document.getElementById('txtJobName');
+  if (txtJobName && (!txtJobName.value || txtJobName.value === '')) {
+    txtJobName.value = filename.replace(/\.(stl|obj|3mf)$/i, '');
+  }
 }
 
 function selectModel(mesh) {
@@ -910,7 +915,11 @@ async function checkPrinterConnection() {
     const data = await res.json();
     if (data.connected) {
       badge.className = 'printer-status-badge connected';
-      text.textContent = `${data.message} (${data.state || 'Online'})`;
+      let info = `${data.message} (${data.state || 'Online'})`;
+      if (data.extruderTemp !== undefined && data.bedTemp !== undefined) {
+        info += ` • 🌡️ ${data.extruderTemp.toFixed(0)}°C / 🛏️ ${data.bedTemp.toFixed(0)}°C`;
+      }
+      text.textContent = info;
       document.getElementById('btnSliceAndPrint').disabled = false;
     } else {
       badge.className = 'printer-status-badge';
@@ -956,6 +965,10 @@ async function executeSlice(sendToPrinter = false) {
       formData.append('files', blob, `part_${idx + 1}.stl`);
     });
 
+    // Custom Job Name
+    const jobName = document.getElementById('txtJobName')?.value.trim() || models[0].userData.filename?.replace(/\.[^/.]+$/, '') || 'k1_print';
+    formData.append('name', jobName);
+
     // Form settings
     formData.append('preset', document.getElementById('selPreset').value);
     formData.append('material', document.getElementById('selMaterial').value);
@@ -994,21 +1007,23 @@ async function executeSlice(sendToPrinter = false) {
     document.getElementById('resLayers').textContent = data.stats.totalLayers;
 
     const btnDownload = document.getElementById('btnDownloadGcode');
-    btnDownload.href = `/api/download?path=${encodeURIComponent(data.stats.gcodePath)}`;
-    btnDownload.download = `${models[0].userData.filename?.replace(/\.[^/.]+$/, '') || 'k1_print'}.gcode`;
+    btnDownload.href = `/api/download?path=${encodeURIComponent(data.stats.gcodePath)}&name=${encodeURIComponent(jobName)}`;
+    btnDownload.download = `${jobName}.gcode`;
 
     const btnSendExisting = document.getElementById('btnSendExistingGcode');
     btnSendExisting.onclick = async () => {
-      if (!printerIp) {
+      const currentIp = document.getElementById('txtPrinterIp').value.trim();
+      if (!currentIp) {
         alert('Please enter a Printer IP address first.');
         return;
       }
-      btnSendExisting.textContent = 'Uploading...';
+      const startNow = confirm(`Upload "${jobName}.gcode" and start printing immediately on Creality K1?\n\n(Click Cancel to just upload to printer memory)`);
+      btnSendExisting.textContent = startNow ? 'Starting Print...' : 'Uploading...';
       try {
         const upRes = await fetch('/api/printer/upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gcodePath: data.stats.gcodePath, printerIp }),
+          body: JSON.stringify({ gcodePath: data.stats.gcodePath, printerIp: currentIp, startPrint: startNow }),
         });
         const upData = await upRes.json();
         alert(upData.message || 'Uploaded successfully!');
@@ -1020,7 +1035,7 @@ async function executeSlice(sendToPrinter = false) {
     };
 
     if (sendToPrinter) {
-      alert(`Print file generated and sent to K1 at ${printerIp}!`);
+      alert(`Print file "${jobName}.gcode" generated and sent to K1 at ${printerIp}!`);
     }
   } catch (err) {
     modalTitle.textContent = 'Slicing Error';
