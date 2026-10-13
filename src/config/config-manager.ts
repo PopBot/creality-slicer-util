@@ -17,6 +17,7 @@ export interface K1Config {
   autoCenter?: boolean;
   autoOrient?: boolean;
   unit?: 'inches' | 'mm';
+  speed?: string;
   orcaPath?: string;
 }
 
@@ -31,6 +32,7 @@ export const DEFAULT_CONFIG: K1Config = {
   supportType: 'tree',
   brim: 'auto',
   walls: 3,
+  speed: '100%',
   autoCenter: true,
   autoOrient: false,
   unit: 'inches',

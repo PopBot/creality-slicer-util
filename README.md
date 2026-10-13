@@ -31,6 +31,7 @@ Built to eliminate the bloat, slow startup, and telemetry/spyware concerns of ve
   - Saved globally to `~/.k1-slicer/config.json` and synchronized across all sessions.
 - 🎛️ **Exact Creality K1 Settings Parity:**
   - Presets: Standard (0.20mm), Fine (0.12mm), Optimal (0.16mm), Draft (0.24mm).
+  - Print Speed: Custom mm/s (e.g. `250mm/s`), percentages (e.g. `80%`), or K1 touchscreen modes (`silent` 50%, `standard` 100%, `sport` 125%, `ludicrous` 166%).
   - Filaments: Creality Hyper PLA (up to 600 mm/s), Generic PLA, Hyper PETG, Hyper ABS, Generic TPU 95A.
   - Infill controls (Gyroid, Grid, Cubic, Honeycomb, Lightning).
   - Support structures (Tree / Organic vs Normal / Grid).
@@ -174,7 +175,9 @@ k1-slice config
 # 2. Set default printer IP:
 k1-slice config set printer-ip 192.168.1.150
 
-# 3. Set default material or quality preset:
+# 3. Set default material, quality preset, or global print speed:
+k1-slice config set speed 250mm/s
+# (or: k1-slice config set speed 80%  /  k1-slice config set speed silent)
 k1-slice config set material hyper-pla
 k1-slice config set preset standard
 k1-slice config set infill 20
@@ -183,6 +186,7 @@ k1-slice config set walls 4
 k1-slice config set support-type tree
 
 # 4. Read back a specific default setting:
+k1-slice config get speed
 k1-slice config get printer-ip
 
 # 5. Reset all configuration to factory defaults:
@@ -221,6 +225,7 @@ k1-slice gear.stl --printer-ip 192.168.1.150 --print
 | Flag | Description | Default |
 | :--- | :--- | :--- |
 | `-p, --preset <preset>` | Quality preset: `standard` (0.20mm), `fine` (0.12mm), `optimal` (0.16mm), `draft` (0.24mm) | Config default (`standard`) |
+| `-s, --speed <speed>` | Print speed: `250mm/s`, `80%`, `silent` (50%), `standard` (100%), `sport` (125%), `ludicrous` (166%) | Config default (`100%`) |
 | `-m, --material <mat>` | Filament: `hyper-pla`, `pla`, `petg`, `abs`, `tpu` | Config default (`hyper-pla`) |
 | `--infill <percent>` | Infill density percentage (e.g. `20` for 20%) | Config default (`20`) |
 | `--infill-pattern <pat>`| Pattern: `gyroid`, `grid`, `cubic`, `honeycomb`, `lightning` | Config default (`gyroid`) |

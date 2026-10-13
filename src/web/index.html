@@ -173,6 +173,21 @@
             </div>
           </div>
 
+          <div class="form-group">
+            <div class="slider-header">
+              <label for="selSpeed">Print Speed</label>
+              <span id="speedBadge" style="font-size:0.75rem; color:#00d285; font-family:monospace;">100% (300 mm/s)</span>
+            </div>
+            <select id="selSpeed">
+              <option value="100%" selected>Standard (100% / 300 mm/s)</option>
+              <option value="50%">Silent (50% / 150 mm/s)</option>
+              <option value="125%">Sport (125% / 375 mm/s)</option>
+              <option value="166%">Ludicrous (166% / 500 mm/s)</option>
+              <option value="custom">Custom (mm/s or %)...</option>
+            </select>
+            <input type="text" id="txtCustomSpeed" placeholder="e.g. 250mm/s or 80%" style="display:none; margin-top:6px;">
+          </div>
+
           <div class="form-group checkbox-group">
             <label>
               <input type="checkbox" id="chkSupports" checked>
@@ -352,6 +367,22 @@
                 <option value="tree">Tree / Organic</option>
                 <option value="normal">Normal / Grid</option>
               </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="cfgSpeed">Default Print Speed</label>
+              <select id="cfgSpeed">
+                <option value="100%" selected>Standard (100% / 300 mm/s)</option>
+                <option value="50%">Silent (50% / 150 mm/s)</option>
+                <option value="125%">Sport (125% / 375 mm/s)</option>
+                <option value="166%">Ludicrous (166% / 500 mm/s)</option>
+                <option value="custom">Custom (mm/s or %)...</option>
+              </select>
+            </div>
+            <div class="form-group half" id="cfgCustomSpeedContainer" style="display:none;">
+              <label for="cfgCustomSpeed">Custom Speed</label>
+              <input type="text" id="cfgCustomSpeed" placeholder="e.g. 250mm/s or 80%">
             </div>
           </div>
         </div>

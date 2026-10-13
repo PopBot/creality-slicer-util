@@ -114,6 +114,7 @@ export function createServer(initialModelPath?: string) {
         supportType: req.body.supportType,
         brim: req.body.brim,
         walls: req.body.walls ? parseInt(req.body.walls, 10) : undefined,
+        speed: req.body.speed,
         arrange: req.body.arrange === 'true',
       };
 

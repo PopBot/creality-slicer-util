@@ -478,6 +478,24 @@ function setupUI() {
     document.getElementById('supportOptions').style.display = e.target.checked ? 'block' : 'none';
   };
 
+  // Speed controls
+  const selSpeed = document.getElementById('selSpeed');
+  const txtCustomSpeed = document.getElementById('txtCustomSpeed');
+  if (selSpeed) {
+    selSpeed.onchange = () => {
+      if (selSpeed.value === 'custom') {
+        txtCustomSpeed.style.display = 'block';
+        txtCustomSpeed.focus();
+      } else {
+        txtCustomSpeed.style.display = 'none';
+      }
+      updateSpeedBadge();
+    };
+  }
+  if (txtCustomSpeed) {
+    txtCustomSpeed.oninput = updateSpeedBadge;
+  }
+
   // Unit toggle buttons
   const btnUnitInches = document.getElementById('btnUnitInches');
   const btnUnitMm = document.getElementById('btnUnitMm');
@@ -497,6 +515,7 @@ function setupUI() {
         brim: document.getElementById('selBrim').value,
         supports: document.getElementById('chkSupports').checked,
         supportType: document.getElementById('selSupportType').value,
+        speed: getSelectedSpeed(),
         printerIp: document.getElementById('txtPrinterIp').value.trim(),
         unit: currentUnit,
       };
@@ -595,6 +614,44 @@ async function loadSavedConfig() {
   } catch {}
 }
 
+function getSelectedSpeed() {
+  const sel = document.getElementById('selSpeed');
+  if (!sel) return '100%';
+  if (sel.value === 'custom') {
+    const customInput = document.getElementById('txtCustomSpeed');
+    return (customInput && customInput.value.trim()) || '100%';
+  }
+  return sel.value;
+}
+
+function updateSpeedBadge() {
+  const badge = document.getElementById('speedBadge');
+  if (!badge) return;
+  const speed = getSelectedSpeed();
+  const lower = speed.toLowerCase();
+  if (lower === '50%' || lower === 'silent') {
+    badge.textContent = 'Silent (50% / 150 mm/s)';
+  } else if (lower === '100%' || lower === 'standard') {
+    badge.textContent = '100% (300 mm/s)';
+  } else if (lower === '125%' || lower === 'sport') {
+    badge.textContent = 'Sport (125% / 375 mm/s)';
+  } else if (lower === '166%' || lower === 'ludicrous') {
+    badge.textContent = 'Ludicrous (166% / 500 mm/s)';
+  } else if (lower.endsWith('%')) {
+    const pct = parseFloat(lower);
+    const mm = Math.round(300 * (pct / 100));
+    badge.textContent = `${pct}% (${mm} mm/s)`;
+  } else {
+    const val = parseFloat(lower.replace(/mm\/s|mms/g, ''));
+    if (!isNaN(val)) {
+      const pct = Math.round((val / 300) * 100);
+      badge.textContent = `${val} mm/s (${pct}%)`;
+    } else {
+      badge.textContent = speed;
+    }
+  }
+}
+
 function applyConfigToUI(cfg) {
   if (cfg.unit) {
     setUnit(cfg.unit);
@@ -613,6 +670,23 @@ function applyConfigToUI(cfg) {
     document.getElementById('supportOptions').style.display = cfg.supports ? 'block' : 'none';
   }
   if (cfg.supportType) document.getElementById('selSupportType').value = cfg.supportType;
+  if (cfg.speed) {
+    const selSpeed = document.getElementById('selSpeed');
+    const txtCustomSpeed = document.getElementById('txtCustomSpeed');
+    if (selSpeed) {
+      if (['100%', '50%', '125%', '166%'].includes(cfg.speed)) {
+        selSpeed.value = cfg.speed;
+        if (txtCustomSpeed) txtCustomSpeed.style.display = 'none';
+      } else {
+        selSpeed.value = 'custom';
+        if (txtCustomSpeed) {
+          txtCustomSpeed.value = cfg.speed;
+          txtCustomSpeed.style.display = 'block';
+        }
+      }
+      updateSpeedBadge();
+    }
+  }
   if (cfg.printerIp) {
     document.getElementById('txtPrinterIp').value = cfg.printerIp;
     checkPrinterConnection();
@@ -645,8 +719,35 @@ function setupSettingsModal() {
     document.getElementById('cfgAutoOrient').checked = !!activeConfig.autoOrient;
     document.getElementById('cfgUnit').value = activeConfig.unit || 'inches';
 
+    const cfgSpeed = document.getElementById('cfgSpeed');
+    const cfgCustomSpeed = document.getElementById('cfgCustomSpeed');
+    const cfgCustomSpeedContainer = document.getElementById('cfgCustomSpeedContainer');
+    const activeSpeed = activeConfig.speed || '100%';
+    if (['100%', '50%', '125%', '166%'].includes(activeSpeed)) {
+      if (cfgSpeed) cfgSpeed.value = activeSpeed;
+      if (cfgCustomSpeedContainer) cfgCustomSpeedContainer.style.display = 'none';
+    } else {
+      if (cfgSpeed) cfgSpeed.value = 'custom';
+      if (cfgCustomSpeed) cfgCustomSpeed.value = activeSpeed;
+      if (cfgCustomSpeedContainer) cfgCustomSpeedContainer.style.display = 'block';
+    }
+
     modal.classList.remove('hidden');
   };
+
+  const cfgSpeed = document.getElementById('cfgSpeed');
+  const cfgCustomSpeed = document.getElementById('cfgCustomSpeed');
+  const cfgCustomSpeedContainer = document.getElementById('cfgCustomSpeedContainer');
+  if (cfgSpeed) {
+    cfgSpeed.onchange = () => {
+      if (cfgSpeed.value === 'custom') {
+        if (cfgCustomSpeedContainer) cfgCustomSpeedContainer.style.display = 'block';
+        if (cfgCustomSpeed) cfgCustomSpeed.focus();
+      } else {
+        if (cfgCustomSpeedContainer) cfgCustomSpeedContainer.style.display = 'none';
+      }
+    };
+  }
 
   // Close modal
   const closeModal = () => modal.classList.add('hidden');
@@ -706,6 +807,13 @@ function setupSettingsModal() {
       autoCenter: document.getElementById('cfgAutoCenter').checked,
       autoOrient: document.getElementById('cfgAutoOrient').checked,
       unit: document.getElementById('cfgUnit').value,
+      speed: (() => {
+        const val = document.getElementById('cfgSpeed').value;
+        if (val === 'custom') {
+          return document.getElementById('cfgCustomSpeed').value.trim() || '100%';
+        }
+        return val;
+      })(),
     };
 
     try {
@@ -857,6 +965,7 @@ async function executeSlice(sendToPrinter = false) {
     formData.append('brim', document.getElementById('selBrim').value);
     formData.append('supports', document.getElementById('chkSupports').checked ? 'true' : 'false');
     formData.append('supportType', document.getElementById('selSupportType').value);
+    formData.append('speed', getSelectedSpeed());
     formData.append('arrange', 'false'); // Preserve user's exact positions on bed!
 
     const printerIp = document.getElementById('txtPrinterIp').value.trim();

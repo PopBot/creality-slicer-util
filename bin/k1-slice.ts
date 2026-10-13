@@ -6,7 +6,7 @@ import os from 'node:os';
 import open from 'open';
 import { STLParser, K1_SPECS } from '../src/geometry/stl-parser.js';
 import { AutoOrient } from '../src/geometry/auto-orient.js';
-import { OrcaWrapper, SliceOptions } from '../src/engine/orca-wrapper.js';
+import { OrcaWrapper, SliceOptions, parseSpeed } from '../src/engine/orca-wrapper.js';
 import { K1PrinterClient } from '../src/printer/k1-client.js';
 import { ConfigManager } from '../src/config/config-manager.js';
 import { startStudioServer } from '../src/server/app.js';
@@ -87,6 +87,7 @@ program
   .option('--support-type <type>', 'Support type: tree (organic) or normal', userConfig.supportType || 'tree')
   .option('--brim <type>', 'Brim adhesion: auto, outer, inner_and_outer, none', userConfig.brim || 'auto')
   .option('--walls <count>', 'Number of wall loops / perimeters', (val) => parseInt(val, 10), userConfig.walls || 3)
+  .option('-s, --speed <speed>', 'Print speed: mm/s (e.g. 250 or 250mm/s), percentage (e.g. 80%), or preset (silent, standard, sport, ludicrous)', userConfig.speed || '100%')
   .option('-o, --output <path>', 'Output .gcode file path (default: same directory as input model)')
   .option('-i, --preview', 'Open 3D interactive plate studio in browser')
   .option('--auto-center', 'Automatically center model at (110, 110) and ground bottom to Z=0', userConfig.autoCenter ?? true)
@@ -120,11 +121,12 @@ program
 
       const isInch = (options.unit || 'inches').toLowerCase() === 'inches';
       const toIn = (mm: number) => (mm / 25.4).toFixed(2);
+      const speedInfo = parseSpeed(options.speed);
 
       console.log(`\n======================================================`);
       console.log(`  ⚡ CREALITY K1 SLICER ENGINE (OrcaSlicer Core)`);
       console.log(`  Bed Volume: 8.66 × 8.66 × 9.84 in (220 × 220 × 250 mm)`);
-      console.log(`  Preset    : ${options.preset} | Default Unit: ${options.unit}`);
+      console.log(`  Preset    : ${options.preset} | Speed: ${speedInfo ? speedInfo.description : 'Standard (100%)'}`);
       console.log(`======================================================\n`);
 
       // 1. Inspect geometry of first file
@@ -198,6 +200,7 @@ program
         supportType: options.supportType,
         brim: options.brim,
         walls: options.walls,
+        speed: options.speed,
         arrange: false,
         outputGcodePath: finalOutputPath,
         onLog: (msg) => {

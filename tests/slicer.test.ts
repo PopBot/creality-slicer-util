@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import { STLParser, K1_SPECS } from '../src/geometry/stl-parser.js';
 import { AutoOrient } from '../src/geometry/auto-orient.js';
 import { GcodeParser } from '../src/engine/gcode-parser.js';
-import { OrcaWrapper } from '../src/engine/orca-wrapper.js';
+import { OrcaWrapper, parseSpeed } from '../src/engine/orca-wrapper.js';
+import { ConfigManager } from '../src/config/config-manager.js';
 
 // Helper to generate test STL
 function createBoxStl(filename: string, ox: number, oy: number, oz: number, w: number, d: number, h: number) {
@@ -109,8 +110,54 @@ async function runTests() {
   assert.ok(stats.estimatedTimeStr !== 'Unknown', 'Estimated time should be parsed');
   console.log(`   ✓ Sliced successfully: ${stats.totalLayers} layers, est time: ${stats.estimatedTimeStr}, filament: ${stats.filamentUsedMeters.toFixed(2)}m`);
 
+  // Test 6: Speed Parsing Logic
+  console.log('6. Testing Speed Parser (Percentages, mm/s, and Named K1 Modes)...');
+  const silentInfo = parseSpeed('silent');
+  assert.strictEqual(silentInfo?.factor, 0.5);
+  assert.strictEqual(silentInfo?.targetSpeedMmS, 150);
+
+  const sportInfo = parseSpeed('sport');
+  assert.strictEqual(sportInfo?.factor, 1.25);
+  assert.strictEqual(sportInfo?.targetSpeedMmS, 375);
+
+  const pctInfo = parseSpeed('80%');
+  assert.strictEqual(pctInfo?.factor, 0.8);
+  assert.strictEqual(pctInfo?.targetSpeedMmS, 240);
+
+  const mmsInfo = parseSpeed('250mm/s');
+  assert.strictEqual(mmsInfo?.targetSpeedMmS, 250);
+  assert.strictEqual(Math.round(mmsInfo?.factor * 300), 250);
+
+  const numMmsInfo = parseSpeed('200');
+  assert.strictEqual(numMmsInfo?.targetSpeedMmS, 200);
+  console.log('   ✓ Speed parser correctly handles modes, %, and mm/s inputs');
+
+  // Test 7: ConfigManager Speed Persistence
+  console.log('7. Testing ConfigManager Speed Persistence...');
+  ConfigManager.set('speed', '250mm/s');
+  assert.strictEqual(ConfigManager.get('speed'), '250mm/s');
+  ConfigManager.set('speed', '80%');
+  assert.strictEqual(ConfigManager.get('speed'), '80%');
+  ConfigManager.set('speed', '100%'); // restore standard
+  console.log('   ✓ ConfigManager properly persists and retrieves speed setting');
+
+  // Test 8: Slicing with Custom Speed Override
+  console.log('8. Testing Slicing with Custom Speed Overrides (Silent 50% & Custom mm/s)...');
+  const silentGcode = '/tmp/test_runner_silent.gcode';
+  const silentStats = await OrcaWrapper.slice([centeredStl], {
+    preset: 'standard',
+    material: 'hyper-pla',
+    infill: 15,
+    speed: 'silent',
+    supports: false,
+    outputGcodePath: silentGcode,
+  });
+  assert.ok(fs.existsSync(silentGcode), 'Silent G-code should exist');
+  assert.ok(silentStats.totalLayers > 0, 'Silent layers > 0');
+  console.log(`   ✓ Sliced with speed override (silent): est time: ${silentStats.estimatedTimeStr}`);
+
   // Clean up
-  [tmpTestStl, centeredStl, oversizedStl, outputGcode].forEach((f) => {
+  [tmpTestStl, centeredStl, oversizedStl, outputGcode, silentGcode].forEach((f) => {
     try { fs.unlinkSync(f); } catch {}
   });
 

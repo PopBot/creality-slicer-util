@@ -164,6 +164,7 @@ You can configure and persist your default preferences so you never have to re-e
    - Click **"Test Connection"** to verify Moonraker (port `7125`) or Creality OS (port `80`).
 3. **Slicing Defaults Tab:**
    - Configure default Quality Preset (Standard 0.20mm, Fine 0.12mm, etc.).
+   - Configure default Print Speed: Standard (100% / 300 mm/s), Silent (50% / 150 mm/s), Sport (125% / 375 mm/s), Ludicrous (166% / 500 mm/s), or Custom (mm/s or %).
    - Configure default Filament (Hyper PLA, Generic PLA, PETG, ABS, TPU).
    - Set default Infill percentage, Infill pattern (Gyroid recommended for K1), Wall loops, and Support style (Tree vs Normal).
 
@@ -181,6 +182,10 @@ k1-slice config
 
 # Set default unit of measurement (inches or mm):
 k1-slice config set unit inches
+
+# Set default print speed globally (mm/s, %, or K1 modes):
+k1-slice config set speed 250mm/s
+# (or: k1-slice config set speed 80%  /  k1-slice config set speed silent)
 
 # Set default printer IP:
 k1-slice config set printer-ip 192.168.1.150
@@ -230,7 +235,20 @@ k1-slice bracket.stl -m petg --walls 4 --infill 30 --infill-pattern gyroid --bri
 k1-slice prototype.stl -p draft -m hyper-pla --infill 10
 ```
 
-### 4. One-Liner Slice, Upload & Print
+### 4. Custom Speed Overrides (Silent, Sport, or Exact mm/s)
+```bash
+# Silent mode (50% speed / 150 mm/s) for quiet nighttime printing:
+k1-slice bracket.stl -s silent
+
+# High-speed sport mode (125% speed / 375 mm/s):
+k1-slice bracket.stl -s sport
+
+# Custom exact speed (250 mm/s or 80%):
+k1-slice bracket.stl -s 250mm/s
+k1-slice bracket.stl -s 80%
+```
+
+### 5. One-Liner Slice, Upload & Print
 ```bash
 # Slice and immediately start printing on your K1:
 k1-slice bracket.stl --printer-ip 192.168.1.150 --print

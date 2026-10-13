@@ -15,10 +15,71 @@ export interface SliceOptions {
   supportType?: 'tree' | 'normal';
   brim?: 'auto' | 'outer' | 'inner_and_outer' | 'none';
   walls?: number;
+  speed?: string | number; // e.g. '150mm/s', '80%', 200, 'silent', 'sport', etc.
   arrange?: boolean;
   orient?: boolean;
   outputGcodePath?: string;
   onLog?: (message: string) => void;
+}
+
+export interface SpeedInfo {
+  factor: number;
+  targetSpeedMmS: number;
+  description: string;
+}
+
+export function parseSpeed(speedInput: string | number | undefined, baseSpeed: number = 300): SpeedInfo | null {
+  if (speedInput === undefined || speedInput === null || speedInput === '') {
+    return null;
+  }
+
+  const str = String(speedInput).trim().toLowerCase();
+
+  // Named K1 touchscreen modes
+  if (str === 'silent') {
+    const factor = 0.5;
+    return { factor, targetSpeedMmS: Math.round(baseSpeed * factor), description: 'Silent (50% / 150 mm/s)' };
+  }
+  if (str === 'standard') {
+    const factor = 1.0;
+    return { factor, targetSpeedMmS: baseSpeed, description: 'Standard (100% / 300 mm/s)' };
+  }
+  if (str === 'sport') {
+    const factor = 1.25;
+    return { factor, targetSpeedMmS: Math.round(baseSpeed * factor), description: 'Sport (125% / 375 mm/s)' };
+  }
+  if (str === 'ludicrous') {
+    const factor = 1.66;
+    return { factor, targetSpeedMmS: Math.round(baseSpeed * factor), description: 'Ludicrous (166% / 500 mm/s)' };
+  }
+
+  // Percentage input (e.g. "80%", "150%")
+  if (str.endsWith('%')) {
+    const pct = parseFloat(str.slice(0, -1));
+    if (isNaN(pct) || pct <= 0) return null;
+    const factor = pct / 100;
+    const target = Math.round(baseSpeed * factor);
+    return { factor, targetSpeedMmS: target, description: `${pct}% (${target} mm/s)` };
+  }
+
+  // Absolute speed in mm/s (e.g. "250mm/s", "250 mms", or numeric 250)
+  const cleaned = str.replace(/mm\/s|mms/g, '').trim();
+  const val = parseFloat(cleaned);
+  if (isNaN(val) || val <= 0) return null;
+
+  // If a small decimal factor was passed like 0.8
+  if (val <= 3.0) {
+    const factor = val;
+    const target = Math.round(baseSpeed * factor);
+    const pct = Math.round(factor * 100);
+    return { factor, targetSpeedMmS: target, description: `${pct}% (${target} mm/s)` };
+  }
+
+  // Otherwise, treat as speed in mm/s
+  const targetSpeedMmS = Math.min(600, Math.max(10, Math.round(val)));
+  const factor = targetSpeedMmS / baseSpeed;
+  const pct = Math.round(factor * 100);
+  return { factor, targetSpeedMmS, description: `${targetSpeedMmS} mm/s (${pct}%)` };
 }
 
 export class OrcaWrapper {
@@ -94,6 +155,76 @@ export class OrcaWrapper {
       processJson.wall_loops = options.walls.toString();
     }
 
+    const logCallback = options.onLog || (() => {});
+
+    if (options.speed !== undefined && options.speed !== null && options.speed !== '') {
+      const baseSpeed = parseFloat(processJson.inner_wall_speed) || 300;
+      const speedInfo = parseSpeed(options.speed, baseSpeed);
+      if (speedInfo) {
+        logCallback(`Applying print speed: ${speedInfo.description}`);
+
+        const factor = speedInfo.factor;
+
+        const speedKeys = [
+          'outer_wall_speed',
+          'inner_wall_speed',
+          'sparse_infill_speed',
+          'internal_solid_infill_speed',
+          'top_surface_speed',
+          'gap_infill_speed',
+          'initial_layer_speed',
+          'initial_layer_infill_speed',
+          'support_speed',
+          'support_interface_speed',
+          'bridge_speed',
+          'skirt_speed',
+        ];
+
+        for (const k of speedKeys) {
+          if (processJson[k] && !processJson[k].includes('%')) {
+            const orig = parseFloat(processJson[k]);
+            if (!isNaN(orig)) {
+              processJson[k] = String(Math.max(10, Math.min(600, Math.round(orig * factor))));
+            }
+          }
+        }
+
+        // Adjust travel speed
+        if (processJson.travel_speed && !processJson.travel_speed.includes('%')) {
+          const origTravel = parseFloat(processJson.travel_speed);
+          if (!isNaN(origTravel)) {
+            if (factor < 1.0) {
+              processJson.travel_speed = String(Math.max(150, Math.round(origTravel * factor)));
+            } else {
+              processJson.travel_speed = String(Math.min(600, Math.round(origTravel * Math.min(1.2, factor))));
+            }
+          }
+        }
+
+        // Adjust accelerations
+        const accelKeys = [
+          'default_acceleration',
+          'outer_wall_acceleration',
+          'inner_wall_acceleration',
+          'travel_acceleration',
+          'top_surface_acceleration',
+        ];
+
+        for (const k of accelKeys) {
+          if (processJson[k] && !processJson[k].includes('%')) {
+            const origAccel = parseFloat(processJson[k]);
+            if (!isNaN(origAccel)) {
+              if (factor < 1.0) {
+                processJson[k] = String(Math.max(1000, Math.round(origAccel * factor)));
+              } else {
+                processJson[k] = String(Math.min(15000, Math.round(origAccel * Math.min(1.5, factor))));
+              }
+            }
+          }
+        }
+      }
+    }
+
     const customProcessPath = path.join(tempDir, 'custom_process.json');
     fs.writeFileSync(customProcessPath, JSON.stringify(processJson, null, 2), 'utf-8');
 
@@ -119,7 +250,6 @@ export class OrcaWrapper {
     args.push('--slice', '0', '--outputdir', tempDir);
     args.push(...inputStlPaths);
 
-    const logCallback = options.onLog || (() => {});
     logCallback(`Executing: ${binary} ${args.join(' ')}`);
 
     return new Promise((resolve, reject) => {
