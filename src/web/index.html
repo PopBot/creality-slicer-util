@@ -111,6 +111,7 @@
             <div><span>Bed:</span> <span id="specBed">8.66 × 8.66 in</span></div>
             <div><span>Max Z:</span> <span id="specMaxZ">9.84 in</span></div>
             <div><span>Nozzle:</span> <span id="specNozzle">0.016 in (0.4mm)</span></div>
+            <div><span>Filament:</span> 1.75 mm</div>
             <div><span>Speed:</span> Up to 600 mm/s</div>
           </div>
         </div>
@@ -124,13 +125,19 @@
           </div>
 
           <div class="form-group">
-            <label for="selPreset">Quality Preset</label>
+            <div class="slider-header">
+              <label for="selPreset">Layer Height (Print Quality)</label>
+              <span style="font-size:0.75rem; color:#888;">0.4mm nozzle</span>
+            </div>
             <select id="selPreset">
-              <option value="standard" selected>0.20mm Standard (Recommended)</option>
-              <option value="optimal">0.16mm Optimal</option>
-              <option value="fine">0.12mm High Detail</option>
-              <option value="draft">0.24mm Fast Draft</option>
+              <option value="standard" selected>0.20mm Standard (Balanced speed & detail)</option>
+              <option value="optimal">0.16mm Optimal (Smooth surfaces)</option>
+              <option value="fine">0.12mm High Detail (Fine layers, slower)</option>
+              <option value="draft">0.24mm Fast Draft (Quick prototyping)</option>
             </select>
+            <span class="field-hint" style="font-size:0.75rem; color:#888; display:block; margin-top:4px;">
+              Vertical slice thickness. Standard for 0.4mm nozzle is 0.20mm.
+            </span>
           </div>
 
           <div class="form-group">
@@ -311,12 +318,12 @@
         <div id="tab-slicing" class="tab-content">
           <div class="form-row">
             <div class="form-group half">
-              <label for="cfgPreset">Default Quality Preset</label>
+              <label for="cfgPreset">Default Layer Height (Quality)</label>
               <select id="cfgPreset">
-                <option value="standard">0.20mm Standard</option>
-                <option value="optimal">0.16mm Optimal</option>
-                <option value="fine">0.12mm High Detail</option>
-                <option value="draft">0.24mm Fast Draft</option>
+                <option value="standard">0.20mm Standard (Balanced)</option>
+                <option value="optimal">0.16mm Optimal (Smooth)</option>
+                <option value="fine">0.12mm High Detail (Fine)</option>
+                <option value="draft">0.24mm Fast Draft (Draft)</option>
               </select>
             </div>
             <div class="form-group half">

@@ -77,7 +77,7 @@ configCmd
 // 3. Main Slice command (root action)
 program
   .argument('[files...]', 'Path to 3D model file(s) (.stl, .3mf, .obj)')
-  .option('-p, --preset <preset>', 'Quality preset: standard (0.20mm), fine (0.12mm), optimal (0.16mm), draft (0.24mm)', userConfig.preset || 'standard')
+  .option('-p, --preset <preset>', 'Layer height / quality (for 0.4mm nozzle): standard (0.20mm), fine (0.12mm), optimal (0.16mm), draft (0.24mm)', userConfig.preset || 'standard')
   .option('-m, --material <material>', 'Filament preset: hyper-pla, ender-pla, pla, petg, abs, tpu', userConfig.material || 'hyper-pla')
   .option('--infill <percent>', 'Infill density percentage (e.g. 20 for 20%)', (val) => parseInt(val, 10), userConfig.infill || 20)
   .option('--infill-pattern <pattern>', 'Infill pattern: gyroid, grid, cubic, honeycomb, rectilinear, lightning', userConfig.infillPattern || 'gyroid')
