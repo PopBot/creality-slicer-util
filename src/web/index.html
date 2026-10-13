@@ -45,6 +45,23 @@
         <button id="btnUnitMm" class="unit-btn" title="Display measurements in Millimeters">mm</button>
       </div>
 
+      <!-- Page Switcher -->
+      <nav class="nav-pages">
+        <button id="navBtnPrepare" class="nav-page-btn active" title="3D Slicer & Model Preparation">
+          <span class="icon">🔪</span> Prepare
+        </button>
+        <button id="navBtnMonitor" class="nav-page-btn" title="Live Printer Telemetry, Camera & Controls">
+          <span class="icon">📹</span> Monitor
+          <span id="navLiveDot" class="live-pulse-dot hidden"></span>
+        </button>
+      </nav>
+
+      <!-- Global Live Status Pill in Header -->
+      <div id="headerPrinterChip" class="header-printer-chip hidden" title="Click to open Live Monitor">
+        <span class="chip-status-dot"></span>
+        <span id="headerChipText">K1: Ready</span>
+      </div>
+
       <div class="top-actions">
         <button id="btnOpenSettings" class="settings-btn" title="Configure Default Settings">
           ⚙️ Settings & Defaults
@@ -52,8 +69,8 @@
       </div>
     </header>
 
-    <!-- Main Viewport -->
-    <main class="workspace">
+    <!-- Main Workspace (Prepare & Slice) -->
+    <main id="viewPrepare" class="workspace">
       <!-- 3D Canvas -->
       <div id="canvas-container"></div>
 
@@ -278,6 +295,241 @@
         </div>
       </aside>
     </main>
+
+    <!-- Dedicated Monitor & Camera Dashboard -->
+    <main id="viewMonitor" class="monitor-workspace hidden">
+      <div class="monitor-grid">
+        
+        <!-- Top Left: Live AI Camera Stream -->
+        <section class="mon-card camera-card">
+          <div class="mon-card-header">
+            <div class="mon-header-title">
+              <span class="live-pill active" id="cameraStatusBadge">🔴 LIVE</span>
+              <h3>AI Camera Stream</h3>
+              <span class="port-subtag">Port 8000 WebRTC</span>
+            </div>
+            <div class="mon-card-actions">
+              <button id="btnToggleChamberLight" class="mon-action-btn" title="Toggle Interior LED Chamber Light">
+                <span class="icon">💡</span> <span id="lightBtnText">Light On</span>
+              </button>
+              <button id="btnRefreshCamera" class="mon-action-btn" title="Reconnect Camera Stream">
+                <span class="icon">🔄</span> Reconnect
+              </button>
+              <button id="btnFullscreenCamera" class="mon-action-btn" title="Toggle Fullscreen">
+                <span class="icon">⛶</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="camera-stream-wrapper" id="cameraStreamWrapper">
+            <video id="k1WebRtcVideo" autoplay playsinline muted class="camera-video-elem"></video>
+            <iframe id="k1CameraIframe" class="camera-iframe hidden" frameborder="0"></iframe>
+            <div id="cameraStandbyOverlay" class="camera-overlay-state">
+              <span class="cam-icon">📹</span>
+              <h4>Creality AI Camera</h4>
+              <p id="camOverlayMsg">Live low-latency H.264 stream from Creality K1</p>
+              <button id="btnConnectStreamManual" class="secondary-btn">Start Stream</button>
+            </div>
+          </div>
+
+          <div class="mon-card-footer">
+            <div class="ai-defense-status">
+              <span class="dot safe"></span>
+              <span>AI Detection: <strong id="monAiStatus">Active</strong></span>
+            </div>
+            <div class="cam-format-tag">
+              <span>H.264 • WebRTC Peer</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Top Right: Live Print Job Status & Controls -->
+        <section class="mon-card job-card">
+          <div class="mon-card-header">
+            <h3>Print Job Status</h3>
+            <span id="printJobStatePill" class="state-pill idle">Idle</span>
+          </div>
+
+          <div class="job-card-content">
+            <div class="job-meta-row">
+              <span class="meta-label">Printing File:</span>
+              <span id="monFileName" class="meta-value filename">No active print</span>
+            </div>
+
+            <!-- Progress Meter -->
+            <div class="progress-meter-container">
+              <div class="progress-track">
+                <div id="monProgressFill" class="progress-bar-fill" style="width: 0%;"></div>
+              </div>
+              <div class="progress-labels">
+                <span id="monProgressPct" class="pct-huge">0%</span>
+                <span id="monLayerCount" class="layers-detail">Layer -- / --</span>
+              </div>
+            </div>
+
+            <!-- Time & Speed Stats -->
+            <div class="stats-triad">
+              <div class="stat-box">
+                <span class="stat-label">Elapsed Time</span>
+                <span id="monTimeElapsed" class="stat-num">--:--</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">Est. Remaining</span>
+                <span id="monTimeRemaining" class="stat-num">--:--</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">Print Speed</span>
+                <span id="monSpeedVal" class="stat-num">-- mm/s</span>
+              </div>
+            </div>
+
+            <!-- Interactive Job Controls -->
+            <div class="job-actions-row">
+              <button id="btnMonPause" class="job-action-btn pause" disabled>
+                <span class="icon">⏸️</span> Pause Print
+              </button>
+              <button id="btnMonResume" class="job-action-btn resume" disabled style="display:none;">
+                <span class="icon">▶️</span> Resume Print
+              </button>
+              <button id="btnMonCancel" class="job-action-btn cancel" disabled>
+                <span class="icon">🛑</span> Cancel Print
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bottom Left: Thermal Telemetry & Preheat Shortcuts -->
+        <section class="mon-card thermal-card">
+          <div class="mon-card-header">
+            <h3>Thermal Telemetry</h3>
+            <div class="preheat-shortcuts">
+              <button id="btnQuickPla" class="quick-preheat-btn" title="Preheat Nozzle to 210°C, Bed to 60°C">PLA (210/60)</button>
+              <button id="btnQuickPetg" class="quick-preheat-btn" title="Preheat Nozzle to 240°C, Bed to 75°C">PETG (240/75)</button>
+              <button id="btnQuickCooldown" class="quick-preheat-btn cooldown" title="Turn heaters off">Cooldown</button>
+            </div>
+          </div>
+
+          <div class="thermal-gauges-grid">
+            <div class="temp-gauge-panel">
+              <div class="gauge-title-row">
+                <span>🔥 Hotend (Nozzle)</span>
+                <span id="monTargetExtruder" class="target-val">Target: --°C</span>
+              </div>
+              <div class="gauge-reading">
+                <span id="monTempExtruder" class="curr-temp">--</span>
+                <span class="unit">°C</span>
+              </div>
+              <div class="gauge-bar-track">
+                <div id="monBarExtruder" class="gauge-bar-fill hotend" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <div class="temp-gauge-panel">
+              <div class="gauge-title-row">
+                <span>♨️ Heatbed</span>
+                <span id="monTargetBed" class="target-val">Target: --°C</span>
+              </div>
+              <div class="gauge-reading">
+                <span id="monTempBed" class="curr-temp">--</span>
+                <span class="unit">°C</span>
+              </div>
+              <div class="gauge-bar-track">
+                <div id="monBarBed" class="gauge-bar-fill bed" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <div class="temp-gauge-panel chamber-panel">
+              <div class="gauge-title-row">
+                <span>📦 Enclosure Chamber</span>
+              </div>
+              <div class="gauge-reading">
+                <span id="monTempChamber" class="curr-temp">--</span>
+                <span class="unit">°C</span>
+              </div>
+              <span class="field-hint" style="font-size:0.75rem; color:#888;">Internal build volume air temp</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bottom Right: Fans & Hardware Motion -->
+        <section class="mon-card motion-card">
+          <div class="mon-card-header">
+            <h3>Fans & Hardware Motion</h3>
+          </div>
+
+          <div class="fans-container">
+            <div class="fan-widget">
+              <span class="fan-icon">🌀</span>
+              <div class="fan-text">
+                <span class="fan-name">Model Cooling</span>
+                <span id="monFanModel" class="fan-speed-val">0%</span>
+              </div>
+            </div>
+            <div class="fan-widget">
+              <span class="fan-icon">💨</span>
+              <div class="fan-text">
+                <span class="fan-name">Side Aux Fan</span>
+                <span id="monFanAux" class="fan-speed-val">0%</span>
+              </div>
+            </div>
+            <div class="fan-widget">
+              <span class="fan-icon">🌪️</span>
+              <div class="fan-text">
+                <span class="fan-name">Chamber Exhaust</span>
+                <span id="monFanCase" class="fan-speed-val">0%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="toolhead-position-card">
+            <span class="pos-title">Toolhead Real-time Coordinates:</span>
+            <span id="monToolheadPos" class="pos-coords">X: --  Y: --  Z: --</span>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- Upload & Launch Progress Modal -->
+    <div id="uploadProgressModal" class="modal-overlay hidden">
+      <div class="upload-progress-card">
+        <div class="upload-progress-header">
+          <span class="rocket-icon">🚀</span>
+          <h3>Sending Print Job to Creality K1</h3>
+        </div>
+        <div class="upload-steps-list">
+          <div id="stepSlice" class="upload-step-item completed">
+            <span class="step-badge">✓</span>
+            <div class="step-info">
+              <strong>1. Slice Model with OrcaSlicer</strong>
+              <span>G-code generated with input shaping & speed limits</span>
+            </div>
+          </div>
+          <div id="stepUpload" class="upload-step-item active">
+            <span class="step-badge spinner-step">⏳</span>
+            <div class="step-info">
+              <strong id="uploadPhaseText">2. Transferring G-code over LAN...</strong>
+              <div class="upload-progress-bar-wrap">
+                <div id="uploadProgressFill" class="upload-progress-fill" style="width: 0%;"></div>
+              </div>
+              <span id="uploadBytesMetrics" class="upload-metrics-subtext">0 MB / 0 MB (0 KB/s)</span>
+            </div>
+          </div>
+          <div id="stepTrigger" class="upload-step-item pending">
+            <span class="step-badge">○</span>
+            <div class="step-info">
+              <strong>3. Trigger Creality OS Engine</strong>
+              <span>Start printing automatically on machine</span>
+            </div>
+          </div>
+        </div>
+        <div class="upload-progress-actions hidden" id="uploadActionsContainer">
+          <button id="btnSwitchToMonitorAfterUpload" class="primary-btn" style="width: 100%;">
+            📹 Open Live Monitor & AI Camera
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Settings & Defaults Modal -->
     <div id="settingsModal" class="modal-overlay hidden">

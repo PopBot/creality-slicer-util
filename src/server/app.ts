@@ -84,7 +84,7 @@ export function createServer(initialModelPath?: string) {
     return res.status(404).json({ error: 'File not found' });
   });
 
-  // Check printer connection status
+  // Check printer connection status and rich telemetry
   app.get('/api/printer/status', async (req, res) => {
     const ip = req.query.ip as string;
     if (!ip) {
@@ -93,6 +93,50 @@ export function createServer(initialModelPath?: string) {
     const client = new K1PrinterClient(ip);
     const status = await client.getStatus();
     return res.json(status);
+  });
+
+  // Printer hardware control commands (light, pause, resume, cancel, preheat)
+  app.post('/api/printer/control', async (req, res) => {
+    const { ip, action, value, target, temp } = req.body;
+    if (!ip) {
+      return res.status(400).json({ error: 'Missing printer IP parameter' });
+    }
+    const client = new K1PrinterClient(ip);
+    try {
+      let success = false;
+      if (action === 'light') {
+        success = await client.toggleLight(Boolean(value));
+      } else if (action === 'pause') {
+        success = await client.pausePrint();
+      } else if (action === 'resume') {
+        success = await client.resumePrint();
+      } else if (action === 'cancel') {
+        success = await client.cancelPrint();
+      } else if (action === 'temp') {
+        success = await client.setTargetTemp(target, Number(temp));
+      } else {
+        return res.status(400).json({ error: `Unknown control action: ${action}` });
+      }
+      return res.json({ success, action });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Upload existing G-code and launch print on K1
+  app.post('/api/printer/print', async (req, res) => {
+    const { ip, gcodePath } = req.body;
+    if (!ip) return res.status(400).json({ error: 'Missing printer IP parameter' });
+    if (!gcodePath || !fs.existsSync(gcodePath)) {
+      return res.status(400).json({ error: 'G-code file not found on disk' });
+    }
+    const client = new K1PrinterClient(ip);
+    try {
+      const result = await client.uploadAndPrint(gcodePath, true);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
   });
 
   // Slice models

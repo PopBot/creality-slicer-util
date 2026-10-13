@@ -8,10 +8,24 @@ export interface PrinterStatus {
   extruderTarget?: number;
   bedTemp?: number;
   bedTarget?: number;
+  boxTemp?: number;
   message?: string;
   model?: string;
   printFileName?: string;
   printProgress?: number;
+  currentLayer?: number;
+  totalLayers?: number;
+  printJobTime?: number;
+  printLeftTime?: number;
+  realTimeSpeed?: string;
+  curPosition?: string;
+  lightOn?: boolean;
+  cameraActive?: boolean;
+  fans?: {
+    model: number;
+    auxiliary: number;
+    case: number;
+  };
 }
 
 export class K1PrinterClient {
@@ -109,18 +123,40 @@ export class K1PrinterClient {
                 try { ws.close(); } catch {}
 
                 let state = 'ready';
-                if (data.state === 2 || (data.printFileName && data.printFileName !== '')) {
-                  state = 'printing';
+                if (data.state === 1 || data.state === 2 || (data.printFileName && data.printFileName !== '')) {
+                  if (data.feedState === 4) {
+                    state = 'paused';
+                  } else {
+                    state = 'printing';
+                  }
+                } else if (data.state === 0) {
+                  state = 'idle';
                 }
 
                 resolve({
                   connected: true,
                   state,
                   extruderTemp: parseFloat(data.nozzleTemp || '0'),
+                  extruderTarget: parseFloat(data.targetNozzleTemp || '0'),
                   bedTemp: parseFloat(data.bedTemp0 || '0'),
+                  bedTarget: parseFloat(data.targetBedTemp0 || '0'),
+                  boxTemp: parseFloat(data.boxTemp || '0'),
                   model: data.model || 'K1',
                   printFileName: data.printFileName ? path.basename(data.printFileName) : undefined,
-                  printProgress: data.printProgress,
+                  printProgress: typeof data.printProgress === 'number' ? data.printProgress : parseFloat(data.printProgress || '0'),
+                  currentLayer: data.layer,
+                  totalLayers: data.TotalLayer,
+                  printJobTime: data.printJobTime,
+                  printLeftTime: data.printLeftTime,
+                  realTimeSpeed: data.realTimeSpeed ? parseFloat(data.realTimeSpeed).toFixed(0) : undefined,
+                  curPosition: data.curPosition,
+                  lightOn: data.lightSw === 1,
+                  cameraActive: data.video === 1,
+                  fans: {
+                    model: data.modelFanPct || 0,
+                    auxiliary: data.auxiliaryFanPct || 0,
+                    case: data.caseFanPct || 0,
+                  },
                   message: `Connected to Creality ${data.model || 'K1'} (Port 80/9999)`,
                 });
               }
@@ -243,5 +279,79 @@ export class K1PrinterClient {
         resolve();
       };
     });
+  }
+
+  /**
+   * Send a general JSON command to Creality OS over WebSocket port 9999.
+   */
+  async sendCommand(payload: Record<string, any>): Promise<boolean> {
+    return new Promise((resolve) => {
+      const WS = (globalThis as any).WebSocket;
+      if (!WS) return resolve(false);
+
+      const ws = new WS(`ws://${this.ip}:9999`);
+      const timer = setTimeout(() => {
+        try { ws.close(); } catch {}
+        resolve(false);
+      }, 2500);
+
+      ws.onopen = () => {
+        const msg = {
+          method: 'set',
+          params: payload,
+          ...payload,
+        };
+        ws.send(JSON.stringify(msg));
+        setTimeout(() => {
+          clearTimeout(timer);
+          try { ws.close(); } catch {}
+          resolve(true);
+        }, 300);
+      };
+
+      ws.onerror = () => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+    });
+  }
+
+  /**
+   * Toggle the interior LED chamber light.
+   */
+  async toggleLight(turnOn: boolean): Promise<boolean> {
+    return this.sendCommand({ lightSw: turnOn ? 1 : 0 });
+  }
+
+  /**
+   * Pause the active print job.
+   */
+  async pausePrint(): Promise<boolean> {
+    return this.sendCommand({ pause: 1, reqGcode: 'PAUSE' });
+  }
+
+  /**
+   * Resume a paused print job.
+   */
+  async resumePrint(): Promise<boolean> {
+    return this.sendCommand({ pause: 0, reqGcode: 'RESUME' });
+  }
+
+  /**
+   * Cancel/stop the active print job.
+   */
+  async cancelPrint(): Promise<boolean> {
+    return this.sendCommand({ stop: 1, reqGcode: 'CANCEL_PRINT' });
+  }
+
+  /**
+   * Set target temperatures for nozzle or bed.
+   */
+  async setTargetTemp(target: 'nozzle' | 'bed', temp: number): Promise<boolean> {
+    if (target === 'nozzle') {
+      return this.sendCommand({ targetNozzleTemp: temp });
+    } else {
+      return this.sendCommand({ targetBedTemp0: temp });
+    }
   }
 }

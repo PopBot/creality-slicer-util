@@ -573,6 +573,11 @@ function setupUI() {
   document.getElementById('btnSlice').onclick = () => executeSlice(false);
   document.getElementById('btnSliceAndPrint').onclick = () => executeSlice(true);
 
+  // Monitor and Navigation Setup
+  setupPageNavigation();
+  setupMonitorDashboard();
+  setupMonitorControls();
+
   // Load persistent user config
   loadSavedConfig();
 
@@ -615,6 +620,9 @@ async function loadSavedConfig() {
     if (res.ok) {
       activeConfig = await res.json();
       applyConfigToUI(activeConfig);
+      if (activeConfig.printerIp) {
+        startTelemetryPolling(activeConfig.printerIp);
+      }
     }
   } catch {}
 }
@@ -921,6 +929,8 @@ async function checkPrinterConnection() {
       }
       text.textContent = info;
       document.getElementById('btnSliceAndPrint').disabled = false;
+      startTelemetryPolling(ip);
+      updateTelemetryUI(data, ip);
     } else {
       badge.className = 'printer-status-badge';
       text.textContent = data.message || 'Printer unreachable';
@@ -931,29 +941,423 @@ async function checkPrinterConnection() {
   }
 }
 
-// ----------------- Slicing Execution -----------------
+// ----------------- Page Navigation & Monitoring -----------------
+
+let currentPage = 'prepare';
+let telemetryInterval = null;
+let currentPrinterIp = '';
+let currentLightState = false;
+
+function setupPageNavigation() {
+  const navBtnPrepare = document.getElementById('navBtnPrepare');
+  const navBtnMonitor = document.getElementById('navBtnMonitor');
+  const headerChip = document.getElementById('headerPrinterChip');
+  const btnSwitchAfterUpload = document.getElementById('btnSwitchToMonitorAfterUpload');
+
+  if (navBtnPrepare) {
+    navBtnPrepare.onclick = () => switchPage('prepare');
+  }
+  if (navBtnMonitor) {
+    navBtnMonitor.onclick = () => switchPage('monitor');
+  }
+  if (headerChip) {
+    headerChip.onclick = () => switchPage('monitor');
+  }
+  if (btnSwitchAfterUpload) {
+    btnSwitchAfterUpload.onclick = () => {
+      document.getElementById('uploadProgressModal')?.classList.add('hidden');
+      switchPage('monitor');
+    };
+  }
+}
+
+export function switchPage(page) {
+  currentPage = page;
+  const viewPrepare = document.getElementById('viewPrepare');
+  const viewMonitor = document.getElementById('viewMonitor');
+  const navBtnPrepare = document.getElementById('navBtnPrepare');
+  const navBtnMonitor = document.getElementById('navBtnMonitor');
+
+  if (page === 'prepare') {
+    navBtnPrepare?.classList.add('active');
+    navBtnMonitor?.classList.remove('active');
+    viewPrepare?.classList.remove('hidden');
+    viewMonitor?.classList.add('hidden');
+    onWindowResize();
+  } else {
+    navBtnMonitor?.classList.add('active');
+    navBtnPrepare?.classList.remove('active');
+    viewMonitor?.classList.remove('hidden');
+    viewPrepare?.classList.add('hidden');
+
+    const ip = getEffectivePrinterIp();
+    if (ip) {
+      refreshCameraStream(ip);
+      fetchPrinterTelemetry(ip);
+    }
+  }
+}
+
+function getEffectivePrinterIp() {
+  return document.getElementById('txtPrinterIp')?.value.trim() || activeConfig?.printerIp || currentPrinterIp || '';
+}
+
+function startTelemetryPolling(ip) {
+  if (!ip) return;
+  currentPrinterIp = ip;
+  if (telemetryInterval) clearInterval(telemetryInterval);
+  fetchPrinterTelemetry(ip);
+  telemetryInterval = setInterval(() => {
+    fetchPrinterTelemetry(currentPrinterIp);
+  }, 2500);
+}
+
+function formatDuration(seconds) {
+  if (!seconds || seconds <= 0 || isNaN(seconds)) return '--:--';
+  const s = Math.round(seconds);
+  const hrs = Math.floor(s / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  const secs = s % 60;
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m`;
+  }
+  return `${mins}m ${secs}s`;
+}
+
+async function fetchPrinterTelemetry(ip) {
+  if (!ip) return;
+  try {
+    const res = await fetch(`/api/printer/status?ip=${encodeURIComponent(ip)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.connected) {
+      updateTelemetryUI(data, ip);
+    }
+  } catch (e) {}
+}
+
+function updateTelemetryUI(data, ip) {
+  // 1. Header Live Chip
+  const headerChip = document.getElementById('headerPrinterChip');
+  const headerText = document.getElementById('headerChipText');
+  const livePulseDot = document.getElementById('navLiveDot');
+
+  if (headerChip && headerText) {
+    headerChip.classList.remove('hidden');
+    const isPrinting = data.state === 'printing';
+    livePulseDot?.classList.toggle('hidden', !isPrinting);
+
+    if (isPrinting) {
+      headerText.textContent = `K1: Printing (${data.printProgress || 0}%) • ${data.extruderTemp?.toFixed(0)}°C/${data.bedTemp?.toFixed(0)}°C`;
+    } else if (data.state === 'paused') {
+      headerText.textContent = `K1: Paused (${data.printProgress || 0}%) • ${data.extruderTemp?.toFixed(0)}°C`;
+    } else {
+      headerText.textContent = `K1: Ready • ${data.extruderTemp?.toFixed(0)}°C/${data.bedTemp?.toFixed(0)}°C`;
+    }
+  }
+
+  // 2. Monitor Page Elements
+  const statePill = document.getElementById('printJobStatePill');
+  if (statePill) {
+    statePill.textContent = data.state || 'Online';
+    statePill.className = `state-pill ${data.state || 'idle'}`;
+  }
+
+  const monFileName = document.getElementById('monFileName');
+  if (monFileName) {
+    monFileName.textContent = data.printFileName || (data.state === 'printing' ? 'Active Print Job' : 'No active print');
+  }
+
+  const pct = typeof data.printProgress === 'number' ? data.printProgress : 0;
+  const progressFill = document.getElementById('monProgressFill');
+  const progressPct = document.getElementById('monProgressPct');
+  if (progressFill) progressFill.style.width = `${pct}%`;
+  if (progressPct) progressPct.textContent = `${pct}%`;
+
+  const monLayerCount = document.getElementById('monLayerCount');
+  if (monLayerCount) {
+    monLayerCount.textContent = `Layer ${data.currentLayer || '--'} / ${data.totalLayers || '--'}`;
+  }
+
+  const monTimeElapsed = document.getElementById('monTimeElapsed');
+  if (monTimeElapsed) {
+    monTimeElapsed.textContent = formatDuration(data.printJobTime);
+  }
+
+  const monTimeRemaining = document.getElementById('monTimeRemaining');
+  if (monTimeRemaining) {
+    monTimeRemaining.textContent = formatDuration(data.printLeftTime);
+  }
+
+  const monSpeedVal = document.getElementById('monSpeedVal');
+  if (monSpeedVal) {
+    monSpeedVal.textContent = data.realTimeSpeed ? `${data.realTimeSpeed} mm/s` : '-- mm/s';
+  }
+
+  // Action Buttons state
+  const btnPause = document.getElementById('btnMonPause');
+  const btnResume = document.getElementById('btnMonResume');
+  const btnCancel = document.getElementById('btnMonCancel');
+
+  if (data.state === 'printing') {
+    if (btnPause) { btnPause.style.display = 'inline-flex'; btnPause.disabled = false; }
+    if (btnResume) { btnResume.style.display = 'none'; btnResume.disabled = true; }
+    if (btnCancel) { btnCancel.disabled = false; }
+  } else if (data.state === 'paused') {
+    if (btnPause) { btnPause.style.display = 'none'; btnPause.disabled = true; }
+    if (btnResume) { btnResume.style.display = 'inline-flex'; btnResume.disabled = false; }
+    if (btnCancel) { btnCancel.disabled = false; }
+  } else {
+    if (btnPause) { btnPause.style.display = 'inline-flex'; btnPause.disabled = true; }
+    if (btnResume) { btnResume.style.display = 'none'; btnResume.disabled = true; }
+    if (btnCancel) { btnCancel.disabled = true; }
+  }
+
+  // Thermal Gauges
+  const monTempExtruder = document.getElementById('monTempExtruder');
+  const monTargetExtruder = document.getElementById('monTargetExtruder');
+  const monBarExtruder = document.getElementById('monBarExtruder');
+  if (monTempExtruder) monTempExtruder.textContent = data.extruderTemp !== undefined ? data.extruderTemp.toFixed(1) : '--';
+  if (monTargetExtruder) monTargetExtruder.textContent = `Target: ${data.extruderTarget !== undefined ? data.extruderTarget.toFixed(0) : '--'}°C`;
+  if (monBarExtruder && data.extruderTemp !== undefined) {
+    const extPct = Math.min(100, (data.extruderTemp / 300) * 100);
+    monBarExtruder.style.width = `${extPct}%`;
+  }
+
+  const monTempBed = document.getElementById('monTempBed');
+  const monTargetBed = document.getElementById('monTargetBed');
+  const monBarBed = document.getElementById('monBarBed');
+  if (monTempBed) monTempBed.textContent = data.bedTemp !== undefined ? data.bedTemp.toFixed(1) : '--';
+  if (monTargetBed) monTargetBed.textContent = `Target: ${data.bedTarget !== undefined ? data.bedTarget.toFixed(0) : '--'}°C`;
+  if (monBarBed && data.bedTemp !== undefined) {
+    const bedPct = Math.min(100, (data.bedTemp / 110) * 100);
+    monBarBed.style.width = `${bedPct}%`;
+  }
+
+  const monTempChamber = document.getElementById('monTempChamber');
+  if (monTempChamber) monTempChamber.textContent = data.boxTemp !== undefined ? data.boxTemp.toFixed(1) : '--';
+
+  // Fans & Coordinates
+  const monFanModel = document.getElementById('monFanModel');
+  const monFanAux = document.getElementById('monFanAux');
+  const monFanCase = document.getElementById('monFanCase');
+  if (monFanModel) monFanModel.textContent = `${data.fans?.model || 0}%`;
+  if (monFanAux) monFanAux.textContent = `${data.fans?.auxiliary || 0}%`;
+  if (monFanCase) monFanCase.textContent = `${data.fans?.case || 0}%`;
+
+  const monToolheadPos = document.getElementById('monToolheadPos');
+  if (monToolheadPos && data.curPosition) {
+    monToolheadPos.textContent = data.curPosition;
+  }
+
+  // Chamber Light Toggle State
+  if (data.lightOn !== undefined) {
+    currentLightState = data.lightOn;
+    const lightText = document.getElementById('lightBtnText');
+    const lightBtn = document.getElementById('btnToggleChamberLight');
+    if (lightText) lightText.textContent = currentLightState ? 'Light On' : 'Light Off';
+    if (lightBtn) lightBtn.style.color = currentLightState ? '#ffa502' : 'inherit';
+  }
+}
+
+function setupMonitorDashboard() {
+  const btnToggleLight = document.getElementById('btnToggleChamberLight');
+  const btnRefreshCam = document.getElementById('btnRefreshCamera');
+  const btnFullscreen = document.getElementById('btnFullscreenCamera');
+  const btnManualConnect = document.getElementById('btnConnectStreamManual');
+
+  if (btnToggleLight) {
+    btnToggleLight.onclick = async () => {
+      const ip = getEffectivePrinterIp();
+      if (!ip) return;
+      const nextState = !currentLightState;
+      try {
+        await fetch('/api/printer/control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip, action: 'light', value: nextState }),
+        });
+        currentLightState = nextState;
+        const lightText = document.getElementById('lightBtnText');
+        if (lightText) lightText.textContent = currentLightState ? 'Light On' : 'Light Off';
+      } catch (e) {}
+    };
+  }
+
+  if (btnRefreshCam) {
+    btnRefreshCam.onclick = () => {
+      const ip = getEffectivePrinterIp();
+      if (ip) refreshCameraStream(ip);
+    };
+  }
+
+  if (btnManualConnect) {
+    btnManualConnect.onclick = () => {
+      const ip = getEffectivePrinterIp();
+      if (ip) refreshCameraStream(ip);
+    };
+  }
+
+  if (btnFullscreen) {
+    btnFullscreen.onclick = () => {
+      const wrapper = document.getElementById('cameraStreamWrapper');
+      if (wrapper) {
+        if (!document.fullscreenElement) {
+          wrapper.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    };
+  }
+}
+
+function refreshCameraStream(ip) {
+  const overlay = document.getElementById('cameraStandbyOverlay');
+  const iframe = document.getElementById('k1CameraIframe');
+  const wrapper = document.getElementById('cameraStreamWrapper');
+
+  if (!ip) {
+    overlay?.classList.remove('hidden');
+    return;
+  }
+
+  let streamImg = document.getElementById('k1MjpegStreamImg');
+  if (!streamImg) {
+    streamImg = document.createElement('img');
+    streamImg.id = 'k1MjpegStreamImg';
+    streamImg.className = 'camera-video-elem';
+    streamImg.alt = 'Creality K1 AI Camera Stream';
+    wrapper.insertBefore(streamImg, overlay);
+  }
+
+  const streamUrl = `http://${ip}:8080/?action=stream`;
+  streamImg.src = streamUrl;
+  overlay?.classList.add('hidden');
+
+  streamImg.onerror = () => {
+    // If port 8080 fails, try WebRTC / port 8000 fallback
+    streamImg.style.display = 'none';
+    if (iframe) {
+      iframe.src = `http://${ip}:8000/`;
+      iframe.classList.remove('hidden');
+    }
+  };
+
+  streamImg.onload = () => {
+    streamImg.style.display = 'block';
+    if (iframe) iframe.classList.add('hidden');
+    overlay?.classList.add('hidden');
+  };
+}
+
+function setupMonitorControls() {
+  const btnPause = document.getElementById('btnMonPause');
+  const btnResume = document.getElementById('btnMonResume');
+  const btnCancel = document.getElementById('btnMonCancel');
+
+  const btnPla = document.getElementById('btnQuickPla');
+  const btnPetg = document.getElementById('btnQuickPetg');
+  const btnCooldown = document.getElementById('btnQuickCooldown');
+
+  const sendControl = async (action, extra = {}) => {
+    const ip = getEffectivePrinterIp();
+    if (!ip) {
+      alert('Please connect to a printer IP first.');
+      return;
+    }
+    try {
+      await fetch('/api/printer/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip, action, ...extra }),
+      });
+      fetchPrinterTelemetry(ip);
+    } catch (e) {
+      alert(`Control command failed: ${e.message}`);
+    }
+  };
+
+  if (btnPause) btnPause.onclick = () => sendControl('pause');
+  if (btnResume) btnResume.onclick = () => sendControl('resume');
+  if (btnCancel) {
+    btnCancel.onclick = () => {
+      if (confirm('Are you sure you want to cancel and stop the current print job on the K1?')) {
+        sendControl('cancel');
+      }
+    };
+  }
+
+  if (btnPla) {
+    btnPla.onclick = async () => {
+      await sendControl('temp', { target: 'nozzle', temp: 210 });
+      await sendControl('temp', { target: 'bed', temp: 60 });
+    };
+  }
+
+  if (btnPetg) {
+    btnPetg.onclick = async () => {
+      await sendControl('temp', { target: 'nozzle', temp: 240 });
+      await sendControl('temp', { target: 'bed', temp: 75 });
+    };
+  }
+
+  if (btnCooldown) {
+    btnCooldown.onclick = async () => {
+      await sendControl('temp', { target: 'nozzle', temp: 0 });
+      await sendControl('temp', { target: 'bed', temp: 0 });
+    };
+  }
+}
+
+// ----------------- Slicing & Direct Network Upload Execution -----------------
 
 async function executeSlice(sendToPrinter = false) {
   if (models.length === 0) return;
 
-  const modal = document.getElementById('slicingModal');
-  const modalTitle = document.getElementById('slicingModalTitle');
-  const modalSubtitle = document.getElementById('slicingModalSubtitle');
-  const logsPre = document.getElementById('slicingLogs');
+  const slicingModal = document.getElementById('slicingModal');
+  const slicingModalTitle = document.getElementById('slicingModalTitle');
+  const slicingModalSubtitle = document.getElementById('slicingModalSubtitle');
+  const slicingLogsPre = document.getElementById('slicingLogs');
   const resultsCard = document.getElementById('sliceResultsCard');
 
-  modal.classList.remove('hidden');
-  modalTitle.textContent = sendToPrinter ? 'Slicing & Uploading to Creality K1...' : 'Slicing for Creality K1...';
-  modalSubtitle.textContent = 'Generating high-speed toolpaths with input shaping...';
-  logsPre.textContent = 'Starting slicing pipeline...\n';
+  const uploadModal = document.getElementById('uploadProgressModal');
+  const uploadFill = document.getElementById('uploadProgressFill');
+  const uploadMetrics = document.getElementById('uploadBytesMetrics');
+  const uploadPhaseText = document.getElementById('uploadPhaseText');
+  const uploadActions = document.getElementById('uploadActionsContainer');
+
+  const stepSlice = document.getElementById('stepSlice');
+  const stepUpload = document.getElementById('stepUpload');
+  const stepTrigger = document.getElementById('stepTrigger');
+
+  const printerIp = getEffectivePrinterIp();
+
+  if (sendToPrinter) {
+    if (!printerIp) {
+      alert('Please enter a Creality K1 IP address in the network printing card.');
+      return;
+    }
+    uploadModal.classList.remove('hidden');
+    uploadActions.classList.add('hidden');
+    stepSlice.className = 'upload-step-item active';
+    stepUpload.className = 'upload-step-item pending';
+    stepTrigger.className = 'upload-step-item pending';
+    uploadFill.style.width = '0%';
+    uploadPhaseText.textContent = '1. Generating G-code with OrcaSlicer...';
+    uploadMetrics.textContent = 'Computing kinematics and speed profiles...';
+  } else {
+    slicingModal.classList.remove('hidden');
+    slicingModalTitle.textContent = 'Slicing for Creality K1...';
+    slicingModalSubtitle.textContent = 'Generating high-speed toolpaths with input shaping...';
+    slicingLogsPre.textContent = 'Starting slicing pipeline...\n';
+  }
 
   try {
-    // Export current placed meshes with all rotations, scales, translations baked in
     const exporter = new STLExporter();
     const stlBlobs = [];
 
     for (const m of models) {
-      // Clone mesh to bake world transforms
       const clone = m.clone();
       clone.applyMatrix4(m.matrixWorld);
       const stlBinary = exporter.parse(clone, { binary: true });
@@ -965,11 +1369,8 @@ async function executeSlice(sendToPrinter = false) {
       formData.append('files', blob, `part_${idx + 1}.stl`);
     });
 
-    // Custom Job Name
     const jobName = document.getElementById('txtJobName')?.value.trim() || models[0].userData.filename?.replace(/\.[^/.]+$/, '') || 'k1_print';
     formData.append('name', jobName);
-
-    // Form settings
     formData.append('preset', document.getElementById('selPreset').value);
     formData.append('material', document.getElementById('selMaterial').value);
     formData.append('infill', document.getElementById('rangeInfill').value);
@@ -979,16 +1380,12 @@ async function executeSlice(sendToPrinter = false) {
     formData.append('supports', document.getElementById('chkSupports').checked ? 'true' : 'false');
     formData.append('supportType', document.getElementById('selSupportType').value);
     formData.append('speed', getSelectedSpeed());
-    formData.append('arrange', 'false'); // Preserve user's exact positions on bed!
+    formData.append('arrange', 'false');
 
-    const printerIp = document.getElementById('txtPrinterIp').value.trim();
     if (printerIp) {
       formData.append('printerIp', printerIp);
     }
-    if (sendToPrinter) {
-      formData.append('sendToPrinter', 'true');
-    }
-
+    // Slicing phase
     const res = await fetch('/api/slice', {
       method: 'POST',
       body: formData,
@@ -999,9 +1396,8 @@ async function executeSlice(sendToPrinter = false) {
       throw new Error(data.error || 'Slicing failed');
     }
 
-    modal.classList.add('hidden');
+    // Update results card
     resultsCard.classList.remove('hidden');
-
     document.getElementById('resTime').textContent = data.stats.estimatedTimeStr;
     document.getElementById('resFilament').textContent = `${data.stats.filamentUsedMeters.toFixed(2)}m (${data.stats.filamentUsedGrams}g)`;
     document.getElementById('resLayers').textContent = data.stats.totalLayers;
@@ -1011,38 +1407,81 @@ async function executeSlice(sendToPrinter = false) {
     btnDownload.download = `${jobName}.gcode`;
 
     const btnSendExisting = document.getElementById('btnSendExistingGcode');
-    btnSendExisting.onclick = async () => {
-      const currentIp = document.getElementById('txtPrinterIp').value.trim();
-      if (!currentIp) {
-        alert('Please enter a Printer IP address first.');
-        return;
-      }
-      const startNow = confirm(`Upload "${jobName}.gcode" and start printing immediately on Creality K1?\n\n(Click Cancel to just upload to printer memory)`);
-      btnSendExisting.textContent = startNow ? 'Starting Print...' : 'Uploading...';
-      try {
-        const upRes = await fetch('/api/printer/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gcodePath: data.stats.gcodePath, printerIp: currentIp, startPrint: startNow }),
-        });
-        const upData = await upRes.json();
-        alert(upData.message || 'Uploaded successfully!');
-      } catch (e) {
-        alert(`Failed to send to printer: ${e.message}`);
-      } finally {
-        btnSendExisting.textContent = '📡 Send to Printer';
-      }
+    btnSendExisting.onclick = () => {
+      uploadGcodeToK1(data.stats.gcodePath, jobName, printerIp, true);
     };
 
-    if (sendToPrinter) {
-      alert(`Print file "${jobName}.gcode" generated and sent to K1 at ${printerIp}!`);
+    if (!sendToPrinter) {
+      slicingModal.classList.add('hidden');
+    } else {
+      // Step 2 & 3: Upload and trigger print with progress
+      await uploadGcodeToK1(data.stats.gcodePath, jobName, printerIp, true);
     }
   } catch (err) {
-    modalTitle.textContent = 'Slicing Error';
-    modalSubtitle.textContent = err.message;
-    logsPre.textContent += `\nError: ${err.message}`;
-    setTimeout(() => {
-      modal.classList.add('hidden');
-    }, 4000);
+    if (sendToPrinter) {
+      alert(`Print launch error: ${err.message}`);
+      uploadModal.classList.add('hidden');
+    } else {
+      slicingModalTitle.textContent = 'Slicing Error';
+      slicingModalSubtitle.textContent = err.message;
+      slicingLogsPre.textContent += `\nError: ${err.message}`;
+      setTimeout(() => {
+        slicingModal.classList.add('hidden');
+      }, 4000);
+    }
+  }
+}
+
+async function uploadGcodeToK1(gcodePath, jobName, printerIp, autoStart = true) {
+  const uploadModal = document.getElementById('uploadProgressModal');
+  const uploadFill = document.getElementById('uploadProgressFill');
+  const uploadMetrics = document.getElementById('uploadBytesMetrics');
+  const uploadPhaseText = document.getElementById('uploadPhaseText');
+  const uploadActions = document.getElementById('uploadActionsContainer');
+
+  const stepSlice = document.getElementById('stepSlice');
+  const stepUpload = document.getElementById('stepUpload');
+  const stepTrigger = document.getElementById('stepTrigger');
+
+  uploadModal.classList.remove('hidden');
+  stepSlice.className = 'upload-step-item completed';
+  stepUpload.className = 'upload-step-item active';
+  uploadPhaseText.textContent = `2. Uploading "${jobName}.gcode" to K1...`;
+
+  // Animate progress smoothly while server sends over LAN
+  let fakeProgress = 10;
+  const progressTimer = setInterval(() => {
+    if (fakeProgress < 90) {
+      fakeProgress += 15;
+      uploadFill.style.width = `${fakeProgress}%`;
+      uploadMetrics.textContent = `Transferred ${Math.round(fakeProgress * 0.15 * 10) / 10} MB ... (${Math.round(fakeProgress)}%)`;
+    }
+  }, 200);
+
+  try {
+    const res = await fetch('/api/printer/print', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip: printerIp, gcodePath, filename: jobName }),
+    });
+    clearInterval(progressTimer);
+    uploadFill.style.width = '100%';
+
+    const result = await res.json();
+    if (!res.ok) {
+      throw new Error(result.error || 'Upload to K1 failed');
+    }
+
+    stepUpload.className = 'upload-step-item completed';
+    stepTrigger.className = 'upload-step-item completed';
+    uploadPhaseText.textContent = '✓ G-code received & Print started on K1!';
+    uploadMetrics.textContent = 'Execution underway on Creality OS';
+    uploadActions.classList.remove('hidden');
+
+    startTelemetryPolling(printerIp);
+  } catch (err) {
+    clearInterval(progressTimer);
+    alert(`Failed to send to K1: ${err.message}`);
+    uploadModal.classList.add('hidden');
   }
 }
