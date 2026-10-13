@@ -7,7 +7,7 @@ import { GcodeParser, SliceStats } from './gcode-parser.js';
 
 export interface SliceOptions {
   preset?: 'standard' | 'fine' | 'optimal' | 'draft';
-  material?: 'hyper-pla' | 'pla' | 'petg' | 'abs' | 'tpu';
+  material?: 'hyper-pla' | 'ender-pla' | 'pla' | 'petg' | 'abs' | 'tpu';
   infill?: number; // e.g. 20 for 20%
   infillPattern?: 'gyroid' | 'grid' | 'cubic' | 'honeycomb' | 'rectilinear' | 'lightning';
   layerHeight?: number; // e.g. 0.20

@@ -45,10 +45,11 @@ export class ProfileManager {
     return file;
   }
 
-  static getFilamentProfile(material: 'hyper-pla' | 'pla' | 'petg' | 'abs' | 'tpu' = 'hyper-pla'): string {
+  static getFilamentProfile(material: 'hyper-pla' | 'ender-pla' | 'pla' | 'petg' | 'abs' | 'tpu' = 'hyper-pla'): string {
     const base = this.getBaseDir();
     const map: Record<string, string> = {
       'hyper-pla': 'Hyper PLA @K1_CFS-C-all.json',
+      'ender-pla': 'Ender-PLA @K1_CFS-C-all.json',
       'pla': 'Generic PLA @K1_CFS-C-all.json',
       'petg': 'Hyper PETG @K1_CFS-C-all.json',
       'abs': 'Hyper ABS @K1_CFS-C-all.json',

@@ -6,7 +6,7 @@ export interface K1Config {
   printerIp?: string;
   printerPort?: number;
   preset?: 'standard' | 'fine' | 'optimal' | 'draft';
-  material?: 'hyper-pla' | 'pla' | 'petg' | 'abs' | 'tpu';
+  material?: 'hyper-pla' | 'ender-pla' | 'pla' | 'petg' | 'abs' | 'tpu';
   infill?: number;
   infillPattern?: 'gyroid' | 'grid' | 'cubic' | 'honeycomb' | 'rectilinear' | 'lightning';
   layerHeight?: number;
