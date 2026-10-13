@@ -133,11 +133,9 @@ export class OrcaWrapper {
 
       try {
         const filData = JSON.parse(fs.readFileSync(filamentProfile, 'utf-8'));
-        // 1. Cap max volumetric flow to 10 mm³/s to prevent overrunning hotend melt rate
-        filData.filament_max_volumetric_speed = ['10'];
-        // 2. Disable violent side auxiliary fan (causes thermal shock & cold jams on standard PLA)
-        filData.additional_cooling_fan_speed = ['0'];
-        // 3. Set nozzle to 210°C for optimal smooth fluidity
+        // 1. Cap max volumetric flow to safe melt rate
+        filData.filament_max_volumetric_speed = ['12'];
+        // 2. Set nozzle to 210°C for smooth fluidity
         filData.nozzle_temperature = ['210'];
         filData.nozzle_temperature_initial_layer = ['210'];
 
