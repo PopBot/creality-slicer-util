@@ -501,6 +501,22 @@ function setupUI() {
     txtCustomSpeed.oninput = updateSpeedBadge;
   }
 
+  // Material change -> auto-adapt recommended speed
+  const selMaterial = document.getElementById('selMaterial');
+  if (selMaterial) {
+    selMaterial.onchange = () => {
+      if (selMaterial.value === 'ender-pla') {
+        if (selSpeed) selSpeed.value = '60mm/s';
+        if (txtCustomSpeed) txtCustomSpeed.style.display = 'none';
+        updateSpeedBadge();
+      } else if (selMaterial.value === 'hyper-pla') {
+        if (selSpeed) selSpeed.value = '100%';
+        if (txtCustomSpeed) txtCustomSpeed.style.display = 'none';
+        updateSpeedBadge();
+      }
+    };
+  }
+
   // Unit toggle buttons
   const btnUnitInches = document.getElementById('btnUnitInches');
   const btnUnitMm = document.getElementById('btnUnitMm');
@@ -641,8 +657,9 @@ function updateSpeedBadge() {
   const badge = document.getElementById('speedBadge');
   if (!badge) return;
   const speed = getSelectedSpeed();
-  const lower = speed.toLowerCase();
-  if (lower === '50%' || lower === 'silent') {
+  if (lower === '60mm/s' || lower === '60' || lower === '60mms') {
+    badge.textContent = '60 mm/s (Ender PLA Safe)';
+  } else if (lower === '50%' || lower === 'silent') {
     badge.textContent = 'Silent (50% / 150 mm/s)';
   } else if (lower === '100%' || lower === 'standard') {
     badge.textContent = '100% (300 mm/s)';

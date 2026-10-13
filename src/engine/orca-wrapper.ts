@@ -121,9 +121,31 @@ export class OrcaWrapper {
 
     const machineProfile = ProfileManager.getMachineProfile('0.4');
     const processProfile = ProfileManager.getProcessProfile(options.preset || 'standard');
-    const filamentProfile = ProfileManager.getFilamentProfile(options.material || 'hyper-pla');
+    let filamentProfile = ProfileManager.getFilamentProfile(options.material || 'hyper-pla');
 
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'k1-slice-'));
+
+    // Material-specific speed and thermal guards
+    if (options.material === 'ender-pla') {
+      if (!options.speed || options.speed === '100%' || options.speed === 'standard') {
+        options.speed = '60mm/s';
+      }
+
+      try {
+        const filData = JSON.parse(fs.readFileSync(filamentProfile, 'utf-8'));
+        // 1. Cap max volumetric flow to 10 mm³/s to prevent overrunning hotend melt rate
+        filData.filament_max_volumetric_speed = ['10'];
+        // 2. Disable violent side auxiliary fan (causes thermal shock & cold jams on standard PLA)
+        filData.additional_cooling_fan_speed = ['0'];
+        // 3. Set nozzle to 210°C for optimal smooth fluidity
+        filData.nozzle_temperature = ['210'];
+        filData.nozzle_temperature_initial_layer = ['210'];
+
+        const customFilPath = path.join(tempDir, 'custom_ender_filament.json');
+        fs.writeFileSync(customFilPath, JSON.stringify(filData, null, 2), 'utf-8');
+        filamentProfile = customFilPath;
+      } catch {}
+    }
 
     // Clone and customize process profile to cleanly override parameters without CLI flag friction
     const processJson = JSON.parse(fs.readFileSync(processProfile, 'utf-8'));
@@ -184,7 +206,8 @@ export class OrcaWrapper {
           if (processJson[k] && !processJson[k].includes('%')) {
             const orig = parseFloat(processJson[k]);
             if (!isNaN(orig)) {
-              processJson[k] = String(Math.max(10, Math.min(600, Math.round(orig * factor))));
+              const minSpeed = (k === 'initial_layer_speed' || k === 'initial_layer_infill_speed') ? 35 : 20;
+              processJson[k] = String(Math.max(minSpeed, Math.min(600, Math.round(orig * factor))));
             }
           }
         }
