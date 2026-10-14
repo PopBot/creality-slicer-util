@@ -165,12 +165,10 @@ export class K1PrinterClient {
 
   private formatWsStatus(data: any): PrinterStatus {
     let state = 'ready';
-    if (data.state === 1 || data.state === 2 || (data.printFileName && data.printFileName !== '')) {
-      if (data.feedState === 4) {
-        state = 'paused';
-      } else {
-        state = 'printing';
-      }
+    if (data.state === 5 || data.pause === 1 || data.feedState === 4) {
+      state = 'paused';
+    } else if (data.state === 1 || data.state === 2 || (data.printFileName && data.printFileName !== '')) {
+      state = 'printing';
     } else if (data.state === 0) {
       state = 'idle';
     }

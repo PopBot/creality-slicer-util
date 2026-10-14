@@ -1297,15 +1297,32 @@ function setupMonitorControls() {
       alert('Please connect to a printer IP first.');
       return;
     }
+
+    // Optimistic UI update so user gets immediate visual feedback
+    if (action === 'pause') {
+      if (btnPause) { btnPause.style.display = 'none'; btnPause.disabled = true; }
+      if (btnResume) { btnResume.style.display = 'inline-flex'; btnResume.disabled = false; }
+      const statePill = document.getElementById('printJobStatePill');
+      if (statePill) { statePill.textContent = 'Paused'; statePill.className = 'state-pill paused'; }
+    } else if (action === 'resume') {
+      if (btnPause) { btnPause.style.display = 'inline-flex'; btnPause.disabled = false; }
+      if (btnResume) { btnResume.style.display = 'none'; btnResume.disabled = true; }
+      const statePill = document.getElementById('printJobStatePill');
+      if (statePill) { statePill.textContent = 'Printing'; statePill.className = 'state-pill printing'; }
+    }
+
     try {
       await fetch('/api/printer/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip, action, ...extra }),
       });
-      fetchPrinterTelemetry(ip);
+      // Fetch telemetry shortly after command registers on machine
+      setTimeout(() => fetchPrinterTelemetry(ip), 500);
+      setTimeout(() => fetchPrinterTelemetry(ip), 1500);
     } catch (e) {
       alert(`Control command failed: ${e.message}`);
+      fetchPrinterTelemetry(ip);
     }
   };
 
