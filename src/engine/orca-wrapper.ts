@@ -11,17 +11,36 @@ export interface SliceOptions {
   infill?: number; // e.g. 20 for 20%
   infillPattern?: 'gyroid' | 'grid' | 'cubic' | 'honeycomb' | 'rectilinear' | 'lightning';
   layerHeight?: number; // e.g. 0.20
+  firstLayerHeight?: number; // e.g. 0.20 or 0.25
   supports?: boolean;
   supportType?: 'tree' | 'normal';
   brim?: 'auto' | 'outer' | 'inner_and_outer' | 'none';
   walls?: number;
-  speed?: string | number; // e.g. '150mm/s', '80%', 200, 'silent', 'sport', etc.
-  nozzleTemp?: number; // e.g. 230 (°C)
-  bedTemp?: number; // e.g. 50 or 60 (°C)
-  innerWallSpeed?: number; // e.g. 80 (mm/s)
-  outerWallSpeed?: number; // e.g. 60 (mm/s)
-  infillSpeed?: number; // e.g. 100 (mm/s)
-  maxVolumetricSpeed?: number; // e.g. 12 (mm³/s)
+  topShellLayers?: number;
+  bottomShellLayers?: number;
+  speed?: string | number; // base / preset mode
+  // Thermals
+  nozzleTemp?: number;
+  nozzleTempInitialLayer?: number;
+  bedTemp?: number;
+  bedTempInitialLayer?: number;
+  // Speeds Hierarchy (mm/s)
+  initialLayerSpeed?: number;
+  initialLayerInfillSpeed?: number;
+  outerWallSpeed?: number;
+  innerWallSpeed?: number;
+  infillSpeed?: number;
+  solidInfillSpeed?: number;
+  topSurfaceSpeed?: number;
+  travelSpeed?: number;
+  // Flow & Dynamics
+  maxVolumetricSpeed?: number; // mm³/s
+  flowRatio?: number; // e.g. 1.0 or 0.98
+  retractionLength?: number; // mm
+  // Fans & Cooling
+  auxiliaryFanSpeed?: number; // 0-100%
+  modelFanSpeed?: number; // 0-100%
+  closeFanFirstNLayers?: number; // e.g. 1
   arrange?: boolean;
   orient?: boolean;
   outputGcodePath?: string;
@@ -252,51 +271,135 @@ export class OrcaWrapper {
       }
     }
 
-    // Granular speed overrides (take precedence over global multiplier)
+    // Granular process parameters (layer heights, shells, speeds, cooling)
+    if (options.layerHeight && !isNaN(options.layerHeight)) {
+      processJson.layer_height = String(options.layerHeight);
+      logCallback(`Layer height: ${options.layerHeight} mm`);
+    }
+    if (options.firstLayerHeight && !isNaN(options.firstLayerHeight)) {
+      processJson.initial_layer_print_height = String(options.firstLayerHeight);
+      logCallback(`First layer height: ${options.firstLayerHeight} mm`);
+    }
+    if (options.topShellLayers && !isNaN(options.topShellLayers)) {
+      processJson.top_shell_layers = String(options.topShellLayers);
+      logCallback(`Top shell layers: ${options.topShellLayers}`);
+    }
+    if (options.bottomShellLayers && !isNaN(options.bottomShellLayers)) {
+      processJson.bottom_shell_layers = String(options.bottomShellLayers);
+      logCallback(`Bottom shell layers: ${options.bottomShellLayers}`);
+    }
+
+    // Granular speed hierarchy
+    if (options.initialLayerSpeed && !isNaN(options.initialLayerSpeed)) {
+      processJson.initial_layer_speed = String(options.initialLayerSpeed);
+      logCallback(`Initial layer speed: ${options.initialLayerSpeed} mm/s`);
+    }
+    if (options.initialLayerInfillSpeed && !isNaN(options.initialLayerInfillSpeed)) {
+      processJson.initial_layer_infill_speed = String(options.initialLayerInfillSpeed);
+      logCallback(`Initial layer infill speed: ${options.initialLayerInfillSpeed} mm/s`);
+    }
     if (options.innerWallSpeed && !isNaN(options.innerWallSpeed)) {
       processJson.inner_wall_speed = String(options.innerWallSpeed);
-      logCallback(`Inner wall speed override: ${options.innerWallSpeed} mm/s`);
+      logCallback(`Inner wall speed: ${options.innerWallSpeed} mm/s`);
     }
     if (options.outerWallSpeed && !isNaN(options.outerWallSpeed)) {
       processJson.outer_wall_speed = String(options.outerWallSpeed);
-      logCallback(`Outer wall speed override: ${options.outerWallSpeed} mm/s`);
+      logCallback(`Outer wall speed: ${options.outerWallSpeed} mm/s`);
     }
     if (options.infillSpeed && !isNaN(options.infillSpeed)) {
       processJson.sparse_infill_speed = String(options.infillSpeed);
-      processJson.internal_solid_infill_speed = String(options.infillSpeed);
-      logCallback(`Infill speed override: ${options.infillSpeed} mm/s`);
+      logCallback(`Sparse infill speed: ${options.infillSpeed} mm/s`);
+    }
+    if (options.solidInfillSpeed && !isNaN(options.solidInfillSpeed)) {
+      processJson.internal_solid_infill_speed = String(options.solidInfillSpeed);
+      logCallback(`Internal solid infill speed: ${options.solidInfillSpeed} mm/s`);
+    }
+    if (options.topSurfaceSpeed && !isNaN(options.topSurfaceSpeed)) {
+      processJson.top_surface_speed = String(options.topSurfaceSpeed);
+      logCallback(`Top surface speed: ${options.topSurfaceSpeed} mm/s`);
+    }
+    if (options.travelSpeed && !isNaN(options.travelSpeed)) {
+      processJson.travel_speed = String(options.travelSpeed);
+      logCallback(`Travel speed: ${options.travelSpeed} mm/s`);
     }
 
     const customProcessPath = path.join(tempDir, 'custom_process.json');
     fs.writeFileSync(customProcessPath, JSON.stringify(processJson, null, 2), 'utf-8');
 
-    // Create custom filament profile to apply custom temperatures and volumetric speed limit
+    // Create custom filament profile to apply custom temperatures, volumetric limit, flow ratio, and cooling
     let effectiveFilamentPath = filamentProfile;
     try {
       const filamentRaw = fs.readFileSync(filamentProfile, 'utf-8');
       const filamentJson = JSON.parse(filamentRaw);
       let filamentModified = false;
 
+      // Thermals (Subsequent & Initial Layer)
       if (options.nozzleTemp && !isNaN(options.nozzleTemp)) {
         filamentJson.nozzle_temperature = [String(options.nozzleTemp)];
-        filamentJson.nozzle_temperature_initial_layer = [String(options.nozzleTemp)];
+        if (!options.nozzleTempInitialLayer) {
+          filamentJson.nozzle_temperature_initial_layer = [String(options.nozzleTemp)];
+        }
         filamentModified = true;
-        logCallback(`Nozzle temperature override: ${options.nozzleTemp}°C`);
+        logCallback(`Nozzle temperature: ${options.nozzleTemp}°C`);
+      }
+      if (options.nozzleTempInitialLayer && !isNaN(options.nozzleTempInitialLayer)) {
+        filamentJson.nozzle_temperature_initial_layer = [String(options.nozzleTempInitialLayer)];
+        filamentModified = true;
+        logCallback(`Initial layer nozzle temperature: ${options.nozzleTempInitialLayer}°C`);
       }
       if (options.bedTemp && !isNaN(options.bedTemp)) {
         filamentJson.hot_plate_temp = [String(options.bedTemp)];
-        filamentJson.hot_plate_temp_initial_layer = [String(options.bedTemp)];
         filamentJson.cool_plate_temp = [String(options.bedTemp)];
-        filamentJson.cool_plate_temp_initial_layer = [String(options.bedTemp)];
         filamentJson.textured_plate_temp = [String(options.bedTemp)];
-        filamentJson.textured_plate_temp_initial_layer = [String(options.bedTemp)];
+        if (!options.bedTempInitialLayer) {
+          filamentJson.hot_plate_temp_initial_layer = [String(options.bedTemp)];
+          filamentJson.cool_plate_temp_initial_layer = [String(options.bedTemp)];
+          filamentJson.textured_plate_temp_initial_layer = [String(options.bedTemp)];
+        }
         filamentModified = true;
-        logCallback(`Bed temperature override: ${options.bedTemp}°C`);
+        logCallback(`Bed temperature: ${options.bedTemp}°C`);
       }
+      if (options.bedTempInitialLayer && !isNaN(options.bedTempInitialLayer)) {
+        filamentJson.hot_plate_temp_initial_layer = [String(options.bedTempInitialLayer)];
+        filamentJson.cool_plate_temp_initial_layer = [String(options.bedTempInitialLayer)];
+        filamentJson.textured_plate_temp_initial_layer = [String(options.bedTempInitialLayer)];
+        filamentModified = true;
+        logCallback(`Initial layer bed temperature: ${options.bedTempInitialLayer}°C`);
+      }
+
+      // Flow & Dynamics
       if (options.maxVolumetricSpeed && !isNaN(options.maxVolumetricSpeed)) {
         filamentJson.filament_max_volumetric_speed = [String(options.maxVolumetricSpeed)];
         filamentModified = true;
         logCallback(`Max volumetric speed cap: ${options.maxVolumetricSpeed} mm³/s`);
+      }
+      if (options.flowRatio && !isNaN(options.flowRatio)) {
+        filamentJson.filament_flow_ratio = [String(options.flowRatio)];
+        filamentModified = true;
+        logCallback(`Filament flow ratio: ${options.flowRatio}`);
+      }
+      if (options.retractionLength && !isNaN(options.retractionLength)) {
+        filamentJson.filament_retraction_length = [String(options.retractionLength)];
+        filamentModified = true;
+        logCallback(`Retraction length: ${options.retractionLength} mm`);
+      }
+
+      // Fans & Cooling
+      if (options.auxiliaryFanSpeed !== undefined && !isNaN(options.auxiliaryFanSpeed)) {
+        filamentJson.additional_cooling_fan_speed = [String(options.auxiliaryFanSpeed)];
+        filamentModified = true;
+        logCallback(`Auxiliary cooling fan speed: ${options.auxiliaryFanSpeed}%`);
+      }
+      if (options.modelFanSpeed !== undefined && !isNaN(options.modelFanSpeed)) {
+        filamentJson.fan_max_speed = [String(options.modelFanSpeed)];
+        filamentJson.fan_min_speed = [String(Math.min(options.modelFanSpeed, 40))];
+        filamentModified = true;
+        logCallback(`Model part cooling fan speed: ${options.modelFanSpeed}%`);
+      }
+      if (options.closeFanFirstNLayers !== undefined && !isNaN(options.closeFanFirstNLayers)) {
+        filamentJson.close_fan_the_first_x_layers = [String(options.closeFanFirstNLayers)];
+        filamentModified = true;
+        logCallback(`Disable cooling fan for first: ${options.closeFanFirstNLayers} layers`);
       }
 
       if (filamentModified) {

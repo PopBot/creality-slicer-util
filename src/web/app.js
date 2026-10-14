@@ -537,12 +537,27 @@ function setupUI() {
         supports: document.getElementById('chkSupports').checked,
         supportType: document.getElementById('selSupportType').value,
         speed: getSelectedSpeed(),
+        nozzleTempInitialLayer: parseFloat(document.getElementById('numNozzleTempInitial')?.value) || 230,
         nozzleTemp: parseFloat(document.getElementById('numNozzleTemp')?.value) || 230,
+        bedTempInitialLayer: parseFloat(document.getElementById('numBedTempInitial')?.value) || 50,
         bedTemp: parseFloat(document.getElementById('numBedTemp')?.value) || 50,
-        innerWallSpeed: parseFloat(document.getElementById('numInnerWallSpeed')?.value) || 120,
+        initialLayerSpeed: parseFloat(document.getElementById('numInitialLayerSpeed')?.value) || 50,
+        initialLayerInfillSpeed: parseFloat(document.getElementById('numInitialLayerInfillSpeed')?.value) || 60,
         outerWallSpeed: parseFloat(document.getElementById('numOuterWallSpeed')?.value) || 80,
+        innerWallSpeed: parseFloat(document.getElementById('numInnerWallSpeed')?.value) || 120,
         infillSpeed: parseFloat(document.getElementById('numInfillSpeed')?.value) || 120,
+        solidInfillSpeed: parseFloat(document.getElementById('numSolidInfillSpeed')?.value) || 120,
+        topSurfaceSpeed: parseFloat(document.getElementById('numTopSurfaceSpeed')?.value) || 80,
+        travelSpeed: parseFloat(document.getElementById('numTravelSpeed')?.value) || 300,
         maxVolumetricSpeed: parseFloat(document.getElementById('numMaxVolumetric')?.value) || 15,
+        flowRatio: parseFloat(document.getElementById('numFlowRatio')?.value) || 1.0,
+        firstLayerHeight: parseFloat(document.getElementById('numFirstLayerHeight')?.value) || 0.20,
+        retractionLength: parseFloat(document.getElementById('numRetractionLength')?.value) || 0.8,
+        auxiliaryFanSpeed: parseFloat(document.getElementById('numAuxFanSpeed')?.value) ?? 50,
+        modelFanSpeed: parseFloat(document.getElementById('numModelFanSpeed')?.value) ?? 100,
+        closeFanFirstNLayers: parseInt(document.getElementById('numCloseFanLayers')?.value, 10) ?? 1,
+        topShellLayers: parseInt(document.getElementById('numTopShellLayers')?.value, 10) ?? 4,
+        bottomShellLayers: parseInt(document.getElementById('numBottomShellLayers')?.value, 10) ?? 3,
         printerIp: document.getElementById('txtPrinterIp').value.trim(),
         unit: currentUnit,
       };
@@ -723,29 +738,93 @@ function applyConfigToUI(cfg) {
       }
       updateSpeedBadge();
     }
+  }
+  // Thermals
+  if (cfg.nozzleTempInitialLayer !== undefined) {
+    const el = document.getElementById('numNozzleTempInitial');
+    if (el) el.value = cfg.nozzleTempInitialLayer;
+  }
   if (cfg.nozzleTemp !== undefined) {
-    const numNozzle = document.getElementById('numNozzleTemp');
-    if (numNozzle) numNozzle.value = cfg.nozzleTemp;
+    const el = document.getElementById('numNozzleTemp');
+    if (el) el.value = cfg.nozzleTemp;
+  }
+  if (cfg.bedTempInitialLayer !== undefined) {
+    const el = document.getElementById('numBedTempInitial');
+    if (el) el.value = cfg.bedTempInitialLayer;
   }
   if (cfg.bedTemp !== undefined) {
-    const numBed = document.getElementById('numBedTemp');
-    if (numBed) numBed.value = cfg.bedTemp;
+    const el = document.getElementById('numBedTemp');
+    if (el) el.value = cfg.bedTemp;
   }
-  if (cfg.innerWallSpeed !== undefined) {
-    const numInner = document.getElementById('numInnerWallSpeed');
-    if (numInner) numInner.value = cfg.innerWallSpeed;
+  // Speeds Hierarchy
+  if (cfg.initialLayerSpeed !== undefined) {
+    const el = document.getElementById('numInitialLayerSpeed');
+    if (el) el.value = cfg.initialLayerSpeed;
+  }
+  if (cfg.initialLayerInfillSpeed !== undefined) {
+    const el = document.getElementById('numInitialLayerInfillSpeed');
+    if (el) el.value = cfg.initialLayerInfillSpeed;
   }
   if (cfg.outerWallSpeed !== undefined) {
-    const numOuter = document.getElementById('numOuterWallSpeed');
-    if (numOuter) numOuter.value = cfg.outerWallSpeed;
+    const el = document.getElementById('numOuterWallSpeed');
+    if (el) el.value = cfg.outerWallSpeed;
+  }
+  if (cfg.innerWallSpeed !== undefined) {
+    const el = document.getElementById('numInnerWallSpeed');
+    if (el) el.value = cfg.innerWallSpeed;
   }
   if (cfg.infillSpeed !== undefined) {
-    const numInfill = document.getElementById('numInfillSpeed');
-    if (numInfill) numInfill.value = cfg.infillSpeed;
+    const el = document.getElementById('numInfillSpeed');
+    if (el) el.value = cfg.infillSpeed;
   }
+  if (cfg.solidInfillSpeed !== undefined) {
+    const el = document.getElementById('numSolidInfillSpeed');
+    if (el) el.value = cfg.solidInfillSpeed;
+  }
+  if (cfg.topSurfaceSpeed !== undefined) {
+    const el = document.getElementById('numTopSurfaceSpeed');
+    if (el) el.value = cfg.topSurfaceSpeed;
+  }
+  if (cfg.travelSpeed !== undefined) {
+    const el = document.getElementById('numTravelSpeed');
+    if (el) el.value = cfg.travelSpeed;
+  }
+  // Flow, Dynamics & Fans
   if (cfg.maxVolumetricSpeed !== undefined) {
-    const numVol = document.getElementById('numMaxVolumetric');
-    if (numVol) numVol.value = cfg.maxVolumetricSpeed;
+    const el = document.getElementById('numMaxVolumetric');
+    if (el) el.value = cfg.maxVolumetricSpeed;
+  }
+  if (cfg.flowRatio !== undefined) {
+    const el = document.getElementById('numFlowRatio');
+    if (el) el.value = cfg.flowRatio;
+  }
+  if (cfg.firstLayerHeight !== undefined) {
+    const el = document.getElementById('numFirstLayerHeight');
+    if (el) el.value = cfg.firstLayerHeight;
+  }
+  if (cfg.retractionLength !== undefined) {
+    const el = document.getElementById('numRetractionLength');
+    if (el) el.value = cfg.retractionLength;
+  }
+  if (cfg.auxiliaryFanSpeed !== undefined) {
+    const el = document.getElementById('numAuxFanSpeed');
+    if (el) el.value = cfg.auxiliaryFanSpeed;
+  }
+  if (cfg.modelFanSpeed !== undefined) {
+    const el = document.getElementById('numModelFanSpeed');
+    if (el) el.value = cfg.modelFanSpeed;
+  }
+  if (cfg.closeFanFirstNLayers !== undefined) {
+    const el = document.getElementById('numCloseFanLayers');
+    if (el) el.value = cfg.closeFanFirstNLayers;
+  }
+  if (cfg.topShellLayers !== undefined) {
+    const el = document.getElementById('numTopShellLayers');
+    if (el) el.value = cfg.topShellLayers;
+  }
+  if (cfg.bottomShellLayers !== undefined) {
+    const el = document.getElementById('numBottomShellLayers');
+    if (el) el.value = cfg.bottomShellLayers;
   }
   if (cfg.printerIp) {
     document.getElementById('txtPrinterIp').value = cfg.printerIp;
@@ -778,12 +857,29 @@ function setupSettingsModal() {
     document.getElementById('cfgAutoCenter').checked = activeConfig.autoCenter !== false;
     document.getElementById('cfgAutoOrient').checked = !!activeConfig.autoOrient;
     document.getElementById('cfgUnit').value = activeConfig.unit || 'inches';
+    // Granular thermals
+    if (document.getElementById('cfgNozzleTempInitial')) document.getElementById('cfgNozzleTempInitial').value = activeConfig.nozzleTempInitialLayer ?? 230;
     if (document.getElementById('cfgNozzleTemp')) document.getElementById('cfgNozzleTemp').value = activeConfig.nozzleTemp ?? 230;
+    if (document.getElementById('cfgBedTempInitial')) document.getElementById('cfgBedTempInitial').value = activeConfig.bedTempInitialLayer ?? 50;
     if (document.getElementById('cfgBedTemp')) document.getElementById('cfgBedTemp').value = activeConfig.bedTemp ?? 50;
-    if (document.getElementById('cfgInnerWallSpeed')) document.getElementById('cfgInnerWallSpeed').value = activeConfig.innerWallSpeed ?? 120;
+    // Granular speeds
+    if (document.getElementById('cfgInitialLayerSpeed')) document.getElementById('cfgInitialLayerSpeed').value = activeConfig.initialLayerSpeed ?? 50;
+    if (document.getElementById('cfgInitialLayerInfillSpeed')) document.getElementById('cfgInitialLayerInfillSpeed').value = activeConfig.initialLayerInfillSpeed ?? 60;
     if (document.getElementById('cfgOuterWallSpeed')) document.getElementById('cfgOuterWallSpeed').value = activeConfig.outerWallSpeed ?? 80;
+    if (document.getElementById('cfgInnerWallSpeed')) document.getElementById('cfgInnerWallSpeed').value = activeConfig.innerWallSpeed ?? 120;
     if (document.getElementById('cfgInfillSpeed')) document.getElementById('cfgInfillSpeed').value = activeConfig.infillSpeed ?? 120;
+    if (document.getElementById('cfgSolidInfillSpeed')) document.getElementById('cfgSolidInfillSpeed').value = activeConfig.solidInfillSpeed ?? 120;
+    if (document.getElementById('cfgTopSurfaceSpeed')) document.getElementById('cfgTopSurfaceSpeed').value = activeConfig.topSurfaceSpeed ?? 80;
+    if (document.getElementById('cfgTravelSpeed')) document.getElementById('cfgTravelSpeed').value = activeConfig.travelSpeed ?? 300;
+    // Flow, Fans & Shells
     if (document.getElementById('cfgMaxVolumetric')) document.getElementById('cfgMaxVolumetric').value = activeConfig.maxVolumetricSpeed ?? 15;
+    if (document.getElementById('cfgFlowRatio')) document.getElementById('cfgFlowRatio').value = activeConfig.flowRatio ?? 1.0;
+    if (document.getElementById('cfgFirstLayerHeight')) document.getElementById('cfgFirstLayerHeight').value = activeConfig.firstLayerHeight ?? 0.20;
+    if (document.getElementById('cfgRetractionLength')) document.getElementById('cfgRetractionLength').value = activeConfig.retractionLength ?? 0.8;
+    if (document.getElementById('cfgAuxFanSpeed')) document.getElementById('cfgAuxFanSpeed').value = activeConfig.auxiliaryFanSpeed ?? 50;
+    if (document.getElementById('cfgModelFanSpeed')) document.getElementById('cfgModelFanSpeed').value = activeConfig.modelFanSpeed ?? 100;
+    if (document.getElementById('cfgTopShellLayers')) document.getElementById('cfgTopShellLayers').value = activeConfig.topShellLayers ?? 4;
+    if (document.getElementById('cfgBottomShellLayers')) document.getElementById('cfgBottomShellLayers').value = activeConfig.bottomShellLayers ?? 3;
 
     const cfgSpeed = document.getElementById('cfgSpeed');
     const cfgCustomSpeed = document.getElementById('cfgCustomSpeed');
@@ -873,12 +969,29 @@ function setupSettingsModal() {
       autoCenter: document.getElementById('cfgAutoCenter').checked,
       autoOrient: document.getElementById('cfgAutoOrient').checked,
       unit: document.getElementById('cfgUnit').value,
+      // Granular Thermals
+      nozzleTempInitialLayer: parseFloat(document.getElementById('cfgNozzleTempInitial')?.value) || 230,
       nozzleTemp: parseFloat(document.getElementById('cfgNozzleTemp')?.value) || 230,
+      bedTempInitialLayer: parseFloat(document.getElementById('cfgBedTempInitial')?.value) || 50,
       bedTemp: parseFloat(document.getElementById('cfgBedTemp')?.value) || 50,
-      innerWallSpeed: parseFloat(document.getElementById('cfgInnerWallSpeed')?.value) || 120,
+      // Granular Speeds
+      initialLayerSpeed: parseFloat(document.getElementById('cfgInitialLayerSpeed')?.value) || 50,
+      initialLayerInfillSpeed: parseFloat(document.getElementById('cfgInitialLayerInfillSpeed')?.value) || 60,
       outerWallSpeed: parseFloat(document.getElementById('cfgOuterWallSpeed')?.value) || 80,
+      innerWallSpeed: parseFloat(document.getElementById('cfgInnerWallSpeed')?.value) || 120,
       infillSpeed: parseFloat(document.getElementById('cfgInfillSpeed')?.value) || 120,
+      solidInfillSpeed: parseFloat(document.getElementById('cfgSolidInfillSpeed')?.value) || 120,
+      topSurfaceSpeed: parseFloat(document.getElementById('cfgTopSurfaceSpeed')?.value) || 80,
+      travelSpeed: parseFloat(document.getElementById('cfgTravelSpeed')?.value) || 300,
+      // Dynamics, Fans & Shells
       maxVolumetricSpeed: parseFloat(document.getElementById('cfgMaxVolumetric')?.value) || 15,
+      flowRatio: parseFloat(document.getElementById('cfgFlowRatio')?.value) || 1.0,
+      firstLayerHeight: parseFloat(document.getElementById('cfgFirstLayerHeight')?.value) || 0.20,
+      retractionLength: parseFloat(document.getElementById('cfgRetractionLength')?.value) || 0.8,
+      auxiliaryFanSpeed: parseFloat(document.getElementById('cfgAuxFanSpeed')?.value) ?? 50,
+      modelFanSpeed: parseFloat(document.getElementById('cfgModelFanSpeed')?.value) ?? 100,
+      topShellLayers: parseInt(document.getElementById('cfgTopShellLayers')?.value, 10) ?? 4,
+      bottomShellLayers: parseInt(document.getElementById('cfgBottomShellLayers')?.value, 10) ?? 3,
       speed: (() => {
         const val = document.getElementById('cfgSpeed').value;
         if (val === 'custom') {
@@ -1469,18 +1582,58 @@ async function executeSlice(sendToPrinter = false) {
     formData.append('supports', document.getElementById('chkSupports').checked ? 'true' : 'false');
     formData.append('supportType', document.getElementById('selSupportType').value);
     formData.append('speed', getSelectedSpeed());
+    // Thermals
+    const nozzleInitialVal = document.getElementById('numNozzleTempInitial')?.value;
+    if (nozzleInitialVal) formData.append('nozzleTempInitialLayer', nozzleInitialVal);
     const nozzleVal = document.getElementById('numNozzleTemp')?.value;
     if (nozzleVal) formData.append('nozzleTemp', nozzleVal);
+    const bedInitialVal = document.getElementById('numBedTempInitial')?.value;
+    if (bedInitialVal) formData.append('bedTempInitialLayer', bedInitialVal);
     const bedVal = document.getElementById('numBedTemp')?.value;
     if (bedVal) formData.append('bedTemp', bedVal);
-    const innerWallVal = document.getElementById('numInnerWallSpeed')?.value;
-    if (innerWallVal) formData.append('innerWallSpeed', innerWallVal);
+
+    // Speed Hierarchy
+    const initialLayerSpeedVal = document.getElementById('numInitialLayerSpeed')?.value;
+    if (initialLayerSpeedVal) formData.append('initialLayerSpeed', initialLayerSpeedVal);
+    const initialLayerInfillSpeedVal = document.getElementById('numInitialLayerInfillSpeed')?.value;
+    if (initialLayerInfillSpeedVal) formData.append('initialLayerInfillSpeed', initialLayerInfillSpeedVal);
     const outerWallVal = document.getElementById('numOuterWallSpeed')?.value;
     if (outerWallVal) formData.append('outerWallSpeed', outerWallVal);
+    const innerWallVal = document.getElementById('numInnerWallSpeed')?.value;
+    if (innerWallVal) formData.append('innerWallSpeed', innerWallVal);
     const infillSpeedVal = document.getElementById('numInfillSpeed')?.value;
     if (infillSpeedVal) formData.append('infillSpeed', infillSpeedVal);
+    const solidInfillSpeedVal = document.getElementById('numSolidInfillSpeed')?.value;
+    if (solidInfillSpeedVal) formData.append('solidInfillSpeed', solidInfillSpeedVal);
+    const topSurfaceSpeedVal = document.getElementById('numTopSurfaceSpeed')?.value;
+    if (topSurfaceSpeedVal) formData.append('topSurfaceSpeed', topSurfaceSpeedVal);
+    const travelSpeedVal = document.getElementById('numTravelSpeed')?.value;
+    if (travelSpeedVal) formData.append('travelSpeed', travelSpeedVal);
+
+    // Flow & Dynamics
     const maxVolVal = document.getElementById('numMaxVolumetric')?.value;
     if (maxVolVal) formData.append('maxVolumetricSpeed', maxVolVal);
+    const flowRatioVal = document.getElementById('numFlowRatio')?.value;
+    if (flowRatioVal) formData.append('flowRatio', flowRatioVal);
+    const firstLayerHeightVal = document.getElementById('numFirstLayerHeight')?.value;
+    if (firstLayerHeightVal) formData.append('firstLayerHeight', firstLayerHeightVal);
+    const retractionVal = document.getElementById('numRetractionLength')?.value;
+    if (retractionVal) formData.append('retractionLength', retractionVal);
+
+    // Cooling & Fans
+    const auxFanVal = document.getElementById('numAuxFanSpeed')?.value;
+    if (auxFanVal !== undefined && auxFanVal !== '') formData.append('auxiliaryFanSpeed', auxFanVal);
+    const modelFanVal = document.getElementById('numModelFanSpeed')?.value;
+    if (modelFanVal !== undefined && modelFanVal !== '') formData.append('modelFanSpeed', modelFanVal);
+    const closeFanVal = document.getElementById('numCloseFanLayers')?.value;
+    if (closeFanVal !== undefined && closeFanVal !== '') formData.append('closeFanFirstNLayers', closeFanVal);
+
+    // Shells & Geometry
+    const topShellVal = document.getElementById('numTopShellLayers')?.value;
+    if (topShellVal) formData.append('topShellLayers', topShellVal);
+    const bottomShellVal = document.getElementById('numBottomShellLayers')?.value;
+    if (bottomShellVal) formData.append('bottomShellLayers', bottomShellVal);
+
     formData.append('arrange', 'false');
 
     if (printerIp) {

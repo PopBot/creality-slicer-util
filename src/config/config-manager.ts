@@ -10,20 +10,38 @@ export interface K1Config {
   infill?: number;
   infillPattern?: 'gyroid' | 'grid' | 'cubic' | 'honeycomb' | 'rectilinear' | 'lightning';
   layerHeight?: number;
+  firstLayerHeight?: number;
   supports?: boolean;
   supportType?: 'tree' | 'normal';
   brim?: 'auto' | 'outer' | 'inner_and_outer' | 'none';
   walls?: number;
+  topShellLayers?: number;
+  bottomShellLayers?: number;
   autoCenter?: boolean;
   autoOrient?: boolean;
   unit?: 'inches' | 'mm';
   speed?: string;
+  // Thermals
   nozzleTemp?: number;
+  nozzleTempInitialLayer?: number;
   bedTemp?: number;
-  innerWallSpeed?: number;
+  bedTempInitialLayer?: number;
+  // Speeds (mm/s)
+  initialLayerSpeed?: number;
+  initialLayerInfillSpeed?: number;
   outerWallSpeed?: number;
+  innerWallSpeed?: number;
   infillSpeed?: number;
+  solidInfillSpeed?: number;
+  topSurfaceSpeed?: number;
+  travelSpeed?: number;
+  // Dynamics & Cooling
   maxVolumetricSpeed?: number;
+  flowRatio?: number;
+  retractionLength?: number;
+  auxiliaryFanSpeed?: number;
+  modelFanSpeed?: number;
+  closeFanFirstNLayers?: number;
   orcaPath?: string;
 }
 
@@ -34,17 +52,32 @@ export const DEFAULT_CONFIG: K1Config = {
   infill: 20,
   infillPattern: 'gyroid',
   layerHeight: 0.20,
+  firstLayerHeight: 0.20,
   supports: true,
   supportType: 'tree',
   brim: 'auto',
   walls: 3,
+  topShellLayers: 4,
+  bottomShellLayers: 3,
   speed: '100%',
   nozzleTemp: 230,
+  nozzleTempInitialLayer: 230,
   bedTemp: 50,
-  innerWallSpeed: 120,
+  bedTempInitialLayer: 50,
+  initialLayerSpeed: 50,
+  initialLayerInfillSpeed: 60,
   outerWallSpeed: 80,
+  innerWallSpeed: 120,
   infillSpeed: 120,
+  solidInfillSpeed: 120,
+  topSurfaceSpeed: 80,
+  travelSpeed: 300,
   maxVolumetricSpeed: 15,
+  flowRatio: 1.0,
+  retractionLength: 0.8,
+  auxiliaryFanSpeed: 50,
+  modelFanSpeed: 100,
+  closeFanFirstNLayers: 1,
   autoCenter: true,
   autoOrient: false,
   unit: 'inches',
