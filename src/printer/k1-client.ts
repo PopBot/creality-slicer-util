@@ -32,6 +32,7 @@ export class K1PrinterClient {
   private ip: string;
   private moonrakerPort: number;
   private webPort: number;
+  private static telemetryCache: Map<string, Partial<any>> = new Map();
 
   constructor(printerIp: string, moonrakerPort: number = 7125, webPort: number = 80) {
     this.ip = printerIp.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
@@ -40,13 +41,22 @@ export class K1PrinterClient {
   }
 
   /**
-   * Check connection and fetch status from Moonraker or stock Creality OS.
+   * Check connection and fetch status from stock Creality OS or Moonraker.
+   * Prioritizes stock Creality OS WebSocket (port 9999) which responds in <50ms.
    */
   async getStatus(): Promise<PrinterStatus> {
-    // 1. Try Moonraker (port 7125) with short timeout
+    // 1. Prioritize stock Creality OS WebSocket (port 9999) - instant response (~30-50ms)
+    try {
+      const wsStatus = await this.getStatusFromCrealityWS();
+      if (wsStatus) {
+        return wsStatus;
+      }
+    } catch {}
+
+    // 2. Try Moonraker (port 7125) with short timeout for rooted machines
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 800);
+      const timeoutId = setTimeout(() => controller.abort(), 600);
       const res = await fetch(`http://${this.ip}:${this.moonrakerPort}/printer/objects/query?print_stats&heater_bed&extruder`, {
         signal: controller.signal,
       });
@@ -67,18 +77,10 @@ export class K1PrinterClient {
       }
     } catch {}
 
-    // 2. Try Creality OS WebSocket (port 9999) for real-time telemetry
-    try {
-      const wsStatus = await this.getStatusFromCrealityWS();
-      if (wsStatus) {
-        return wsStatus;
-      }
-    } catch {}
-
     // 3. Fallback: check stock web port (port 80)
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1500);
+      const timeoutId = setTimeout(() => controller.abort(), 1000);
       const res = await fetch(`http://${this.ip}:${this.webPort}/`, { signal: controller.signal });
       clearTimeout(timeoutId);
       if (res.ok) {
@@ -107,58 +109,37 @@ export class K1PrinterClient {
         if (!resolved) {
           resolved = true;
           try { ws?.close(); } catch {}
-          resolve(null);
+          // If we have cached telemetry for this IP, return it instead of null
+          const cached = K1PrinterClient.telemetryCache.get(this.ip);
+          if (cached && (cached.nozzleTemp !== undefined || cached.bedTemp0 !== undefined)) {
+            resolve(this.formatWsStatus(cached));
+          } else {
+            resolve(null);
+          }
         }
-      }, 1500);
+      }, 1200);
 
       try {
         ws = new WS(`ws://${this.ip}:9999`);
+        ws.onopen = () => {
+          try {
+            ws.send(JSON.stringify({ method: 'get' }));
+          } catch {}
+        };
         ws.onmessage = (event: any) => {
           try {
             const data = JSON.parse(event.data);
-            if (data.nozzleTemp !== undefined || data.bedTemp0 !== undefined) {
+            // Merge into cached state for this IP
+            const currentCached = K1PrinterClient.telemetryCache.get(this.ip) || {};
+            const merged = { ...currentCached, ...data };
+            K1PrinterClient.telemetryCache.set(this.ip, merged);
+
+            if (merged.nozzleTemp !== undefined || merged.bedTemp0 !== undefined) {
               if (!resolved) {
                 resolved = true;
                 clearTimeout(timeout);
                 try { ws.close(); } catch {}
-
-                let state = 'ready';
-                if (data.state === 1 || data.state === 2 || (data.printFileName && data.printFileName !== '')) {
-                  if (data.feedState === 4) {
-                    state = 'paused';
-                  } else {
-                    state = 'printing';
-                  }
-                } else if (data.state === 0) {
-                  state = 'idle';
-                }
-
-                resolve({
-                  connected: true,
-                  state,
-                  extruderTemp: parseFloat(data.nozzleTemp || '0'),
-                  extruderTarget: parseFloat(data.targetNozzleTemp || '0'),
-                  bedTemp: parseFloat(data.bedTemp0 || '0'),
-                  bedTarget: parseFloat(data.targetBedTemp0 || '0'),
-                  boxTemp: parseFloat(data.boxTemp || '0'),
-                  model: data.model || 'K1',
-                  printFileName: data.printFileName ? path.basename(data.printFileName) : undefined,
-                  printProgress: typeof data.printProgress === 'number' ? data.printProgress : parseFloat(data.printProgress || '0'),
-                  currentLayer: data.layer,
-                  totalLayers: data.TotalLayer,
-                  printJobTime: data.printJobTime,
-                  printLeftTime: data.printLeftTime,
-                  realTimeSpeed: data.realTimeSpeed ? parseFloat(data.realTimeSpeed).toFixed(0) : undefined,
-                  curPosition: data.curPosition,
-                  lightOn: data.lightSw === 1,
-                  cameraActive: data.video === 1,
-                  fans: {
-                    model: data.modelFanPct || 0,
-                    auxiliary: data.auxiliaryFanPct || 0,
-                    case: data.caseFanPct || 0,
-                  },
-                  message: `Connected to Creality ${data.model || 'K1'} (Port 80/9999)`,
-                });
+                resolve(this.formatWsStatus(merged));
               }
             }
           } catch {}
@@ -167,7 +148,12 @@ export class K1PrinterClient {
           if (!resolved) {
             resolved = true;
             clearTimeout(timeout);
-            resolve(null);
+            const cached = K1PrinterClient.telemetryCache.get(this.ip);
+            if (cached && (cached.nozzleTemp !== undefined || cached.bedTemp0 !== undefined)) {
+              resolve(this.formatWsStatus(cached));
+            } else {
+              resolve(null);
+            }
           }
         };
       } catch {
@@ -175,6 +161,46 @@ export class K1PrinterClient {
         resolve(null);
       }
     });
+  }
+
+  private formatWsStatus(data: any): PrinterStatus {
+    let state = 'ready';
+    if (data.state === 1 || data.state === 2 || (data.printFileName && data.printFileName !== '')) {
+      if (data.feedState === 4) {
+        state = 'paused';
+      } else {
+        state = 'printing';
+      }
+    } else if (data.state === 0) {
+      state = 'idle';
+    }
+
+    return {
+      connected: true,
+      state,
+      extruderTemp: parseFloat(data.nozzleTemp || '0'),
+      extruderTarget: parseFloat(data.targetNozzleTemp || '0'),
+      bedTemp: parseFloat(data.bedTemp0 || '0'),
+      bedTarget: parseFloat(data.targetBedTemp0 || '0'),
+      boxTemp: parseFloat(data.boxTemp || '0'),
+      model: data.model || 'K1',
+      printFileName: data.printFileName ? path.basename(data.printFileName) : undefined,
+      printProgress: typeof data.printProgress === 'number' ? data.printProgress : parseFloat(data.printProgress || '0'),
+      currentLayer: data.layer,
+      totalLayers: data.TotalLayer,
+      printJobTime: data.printJobTime,
+      printLeftTime: data.printLeftTime,
+      realTimeSpeed: data.realTimeSpeed ? parseFloat(data.realTimeSpeed).toFixed(0) : undefined,
+      curPosition: data.curPosition,
+      lightOn: data.lightSw === 1,
+      cameraActive: data.video === 1,
+      fans: {
+        model: data.modelFanPct || 0,
+        auxiliary: data.auxiliaryFanPct || 0,
+        case: data.caseFanPct || 0,
+      },
+      message: `Connected to Creality ${data.model || 'K1'} (Port 80/9999)`,
+    };
   }
 
   /**

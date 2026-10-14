@@ -305,16 +305,16 @@
         <section class="mon-card camera-card">
           <div class="mon-card-header">
             <div class="mon-header-title">
-              <span class="live-pill active" id="cameraStatusBadge">🔴 LIVE</span>
-              <h3>AI Camera Stream</h3>
-              <span class="port-subtag">Port 8000 WebRTC</span>
+              <span class="live-pill" id="cameraStatusBadge" style="background: rgba(255, 165, 2, 0.2); color: #ffa502;">🟡 HARDWARE DETECTED</span>
+              <h3>AI Camera Module</h3>
+              <span class="port-subtag">Creality Cloud / WebRTC</span>
             </div>
             <div class="mon-card-actions">
               <button id="btnToggleChamberLight" class="mon-action-btn" title="Toggle Interior LED Chamber Light">
                 <span class="icon">💡</span> <span id="lightBtnText">Light On</span>
               </button>
-              <button id="btnRefreshCamera" class="mon-action-btn" title="Reconnect Camera Stream">
-                <span class="icon">🔄</span> Reconnect
+              <button id="btnRefreshCamera" class="mon-action-btn" title="Test MJPEG / Web Stream Connection">
+                <span class="icon">🔄</span> Check Stream
               </button>
               <button id="btnFullscreenCamera" class="mon-action-btn" title="Toggle Fullscreen">
                 <span class="icon">⛶</span>
@@ -323,13 +323,18 @@
           </div>
 
           <div class="camera-stream-wrapper" id="cameraStreamWrapper">
-            <video id="k1WebRtcVideo" autoplay playsinline muted class="camera-video-elem"></video>
+            <video id="k1WebRtcVideo" autoplay playsinline muted class="camera-video-elem hidden"></video>
             <iframe id="k1CameraIframe" class="camera-iframe hidden" frameborder="0"></iframe>
             <div id="cameraStandbyOverlay" class="camera-overlay-state">
               <span class="cam-icon">📹</span>
-              <h4>Creality AI Camera</h4>
-              <p id="camOverlayMsg">Live low-latency H.264 stream from Creality K1</p>
-              <button id="btnConnectStreamManual" class="secondary-btn">Start Stream</button>
+              <h4>Creality AI Camera Active</h4>
+              <p id="camOverlayMsg" style="max-width: 380px; line-height: 1.5; color: #a4b0be;">
+                Hardware detected by K1 motherboard (AI debris & first-layer defense running). On stock Creality OS firmware, live video streams via the Creality Cloud P2P tunnel rather than unauthenticated local HTTP port 8080.
+              </p>
+              <div style="display: flex; gap: 8px; margin-top: 6px;">
+                <button id="btnConnectStreamManual" class="secondary-btn" style="padding: 6px 12px; font-size: 11px;">Test Local Port 8080</button>
+                <a id="btnOpenStockWeb" href="#" target="_blank" class="secondary-btn" style="padding: 6px 12px; font-size: 11px; text-decoration: none; display: inline-flex; align-items: center;">Open Printer Web UI ↗</a>
+              </div>
             </div>
           </div>
 
@@ -339,7 +344,7 @@
               <span>AI Detection: <strong id="monAiStatus">Active</strong></span>
             </div>
             <div class="cam-format-tag">
-              <span>H.264 • WebRTC Peer</span>
+              <span id="camFormatNotice">Creality Cloud Mobile Verified</span>
             </div>
           </div>
         </section>

@@ -30,6 +30,11 @@ body, html {
   font-size: 13px;
 }
 
+/* Global Utility: hide inactive views and elements */
+.hidden {
+  display: none !important;
+}
+
 #app {
   display: flex;
   flex-direction: column;

@@ -657,6 +657,7 @@ function updateSpeedBadge() {
   const badge = document.getElementById('speedBadge');
   if (!badge) return;
   const speed = getSelectedSpeed();
+  const lower = (speed || '').toLowerCase().trim();
   if (lower === '60mm/s' || lower === '60' || lower === '60mms') {
     badge.textContent = '60 mm/s (Ender PLA Safe)';
   } else if (lower === '50%' || lower === 'silent') {
@@ -1026,7 +1027,7 @@ function startTelemetryPolling(ip) {
   fetchPrinterTelemetry(ip);
   telemetryInterval = setInterval(() => {
     fetchPrinterTelemetry(currentPrinterIp);
-  }, 2500);
+  }, 1500);
 }
 
 function formatDuration(seconds) {
@@ -1233,6 +1234,12 @@ function refreshCameraStream(ip) {
   const overlay = document.getElementById('cameraStandbyOverlay');
   const iframe = document.getElementById('k1CameraIframe');
   const wrapper = document.getElementById('cameraStreamWrapper');
+  const badge = document.getElementById('cameraStatusBadge');
+  const openWebLink = document.getElementById('btnOpenStockWeb');
+
+  if (openWebLink && ip) {
+    openWebLink.href = `http://${ip}/`;
+  }
 
   if (!ip) {
     overlay?.classList.remove('hidden');
@@ -1243,29 +1250,36 @@ function refreshCameraStream(ip) {
   if (!streamImg) {
     streamImg = document.createElement('img');
     streamImg.id = 'k1MjpegStreamImg';
-    streamImg.className = 'camera-video-elem';
+    streamImg.className = 'camera-video-elem hidden';
     streamImg.alt = 'Creality K1 AI Camera Stream';
     wrapper.insertBefore(streamImg, overlay);
   }
 
-  const streamUrl = `http://${ip}:8080/?action=stream`;
-  streamImg.src = streamUrl;
-  overlay?.classList.add('hidden');
-
-  streamImg.onerror = () => {
-    // If port 8080 fails, try WebRTC / port 8000 fallback
-    streamImg.style.display = 'none';
-    if (iframe) {
-      iframe.src = `http://${ip}:8000/`;
-      iframe.classList.remove('hidden');
+  // Test port 8080 stream
+  const testImg = new Image();
+  testImg.onload = () => {
+    streamImg.src = `http://${ip}:8080/?action=stream`;
+    streamImg.classList.remove('hidden');
+    overlay?.classList.add('hidden');
+    if (iframe) iframe.classList.add('hidden');
+    if (badge) {
+      badge.textContent = '🔴 LIVE (MJPEG)';
+      badge.style.background = 'rgba(255, 71, 87, 0.25)';
+      badge.style.color = '#ff4757';
     }
   };
-
-  streamImg.onload = () => {
-    streamImg.style.display = 'block';
+  testImg.onerror = () => {
+    // Port 8080 is inactive on stock firmware; keep the friendly standby overlay visible
+    streamImg.classList.add('hidden');
     if (iframe) iframe.classList.add('hidden');
-    overlay?.classList.add('hidden');
+    overlay?.classList.remove('hidden');
+    if (badge) {
+      badge.textContent = '🟡 HARDWARE DETECTED';
+      badge.style.background = 'rgba(255, 165, 2, 0.2)';
+      badge.style.color = '#ffa502';
+    }
   };
+  testImg.src = `http://${ip}:8080/?action=snapshot&t=${Date.now()}`;
 }
 
 function setupMonitorControls() {
