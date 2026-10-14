@@ -166,6 +166,12 @@ export function createServer(initialModelPath?: string) {
         brim: req.body.brim,
         walls: req.body.walls ? parseInt(req.body.walls, 10) : undefined,
         speed: req.body.speed,
+        nozzleTemp: req.body.nozzleTemp ? parseFloat(req.body.nozzleTemp) : undefined,
+        bedTemp: req.body.bedTemp ? parseFloat(req.body.bedTemp) : undefined,
+        innerWallSpeed: req.body.innerWallSpeed ? parseFloat(req.body.innerWallSpeed) : undefined,
+        outerWallSpeed: req.body.outerWallSpeed ? parseFloat(req.body.outerWallSpeed) : undefined,
+        infillSpeed: req.body.infillSpeed ? parseFloat(req.body.infillSpeed) : undefined,
+        maxVolumetricSpeed: req.body.maxVolumetricSpeed ? parseFloat(req.body.maxVolumetricSpeed) : undefined,
         arrange: req.body.arrange === 'true',
         outputGcodePath,
       };

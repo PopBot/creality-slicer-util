@@ -537,6 +537,12 @@ function setupUI() {
         supports: document.getElementById('chkSupports').checked,
         supportType: document.getElementById('selSupportType').value,
         speed: getSelectedSpeed(),
+        nozzleTemp: parseFloat(document.getElementById('numNozzleTemp')?.value) || 230,
+        bedTemp: parseFloat(document.getElementById('numBedTemp')?.value) || 50,
+        innerWallSpeed: parseFloat(document.getElementById('numInnerWallSpeed')?.value) || 120,
+        outerWallSpeed: parseFloat(document.getElementById('numOuterWallSpeed')?.value) || 80,
+        infillSpeed: parseFloat(document.getElementById('numInfillSpeed')?.value) || 120,
+        maxVolumetricSpeed: parseFloat(document.getElementById('numMaxVolumetric')?.value) || 15,
         printerIp: document.getElementById('txtPrinterIp').value.trim(),
         unit: currentUnit,
       };
@@ -717,6 +723,29 @@ function applyConfigToUI(cfg) {
       }
       updateSpeedBadge();
     }
+  if (cfg.nozzleTemp !== undefined) {
+    const numNozzle = document.getElementById('numNozzleTemp');
+    if (numNozzle) numNozzle.value = cfg.nozzleTemp;
+  }
+  if (cfg.bedTemp !== undefined) {
+    const numBed = document.getElementById('numBedTemp');
+    if (numBed) numBed.value = cfg.bedTemp;
+  }
+  if (cfg.innerWallSpeed !== undefined) {
+    const numInner = document.getElementById('numInnerWallSpeed');
+    if (numInner) numInner.value = cfg.innerWallSpeed;
+  }
+  if (cfg.outerWallSpeed !== undefined) {
+    const numOuter = document.getElementById('numOuterWallSpeed');
+    if (numOuter) numOuter.value = cfg.outerWallSpeed;
+  }
+  if (cfg.infillSpeed !== undefined) {
+    const numInfill = document.getElementById('numInfillSpeed');
+    if (numInfill) numInfill.value = cfg.infillSpeed;
+  }
+  if (cfg.maxVolumetricSpeed !== undefined) {
+    const numVol = document.getElementById('numMaxVolumetric');
+    if (numVol) numVol.value = cfg.maxVolumetricSpeed;
   }
   if (cfg.printerIp) {
     document.getElementById('txtPrinterIp').value = cfg.printerIp;
@@ -749,6 +778,12 @@ function setupSettingsModal() {
     document.getElementById('cfgAutoCenter').checked = activeConfig.autoCenter !== false;
     document.getElementById('cfgAutoOrient').checked = !!activeConfig.autoOrient;
     document.getElementById('cfgUnit').value = activeConfig.unit || 'inches';
+    if (document.getElementById('cfgNozzleTemp')) document.getElementById('cfgNozzleTemp').value = activeConfig.nozzleTemp ?? 230;
+    if (document.getElementById('cfgBedTemp')) document.getElementById('cfgBedTemp').value = activeConfig.bedTemp ?? 50;
+    if (document.getElementById('cfgInnerWallSpeed')) document.getElementById('cfgInnerWallSpeed').value = activeConfig.innerWallSpeed ?? 120;
+    if (document.getElementById('cfgOuterWallSpeed')) document.getElementById('cfgOuterWallSpeed').value = activeConfig.outerWallSpeed ?? 80;
+    if (document.getElementById('cfgInfillSpeed')) document.getElementById('cfgInfillSpeed').value = activeConfig.infillSpeed ?? 120;
+    if (document.getElementById('cfgMaxVolumetric')) document.getElementById('cfgMaxVolumetric').value = activeConfig.maxVolumetricSpeed ?? 15;
 
     const cfgSpeed = document.getElementById('cfgSpeed');
     const cfgCustomSpeed = document.getElementById('cfgCustomSpeed');
@@ -838,6 +873,12 @@ function setupSettingsModal() {
       autoCenter: document.getElementById('cfgAutoCenter').checked,
       autoOrient: document.getElementById('cfgAutoOrient').checked,
       unit: document.getElementById('cfgUnit').value,
+      nozzleTemp: parseFloat(document.getElementById('cfgNozzleTemp')?.value) || 230,
+      bedTemp: parseFloat(document.getElementById('cfgBedTemp')?.value) || 50,
+      innerWallSpeed: parseFloat(document.getElementById('cfgInnerWallSpeed')?.value) || 120,
+      outerWallSpeed: parseFloat(document.getElementById('cfgOuterWallSpeed')?.value) || 80,
+      infillSpeed: parseFloat(document.getElementById('cfgInfillSpeed')?.value) || 120,
+      maxVolumetricSpeed: parseFloat(document.getElementById('cfgMaxVolumetric')?.value) || 15,
       speed: (() => {
         const val = document.getElementById('cfgSpeed').value;
         if (val === 'custom') {
@@ -1428,6 +1469,18 @@ async function executeSlice(sendToPrinter = false) {
     formData.append('supports', document.getElementById('chkSupports').checked ? 'true' : 'false');
     formData.append('supportType', document.getElementById('selSupportType').value);
     formData.append('speed', getSelectedSpeed());
+    const nozzleVal = document.getElementById('numNozzleTemp')?.value;
+    if (nozzleVal) formData.append('nozzleTemp', nozzleVal);
+    const bedVal = document.getElementById('numBedTemp')?.value;
+    if (bedVal) formData.append('bedTemp', bedVal);
+    const innerWallVal = document.getElementById('numInnerWallSpeed')?.value;
+    if (innerWallVal) formData.append('innerWallSpeed', innerWallVal);
+    const outerWallVal = document.getElementById('numOuterWallSpeed')?.value;
+    if (outerWallVal) formData.append('outerWallSpeed', outerWallVal);
+    const infillSpeedVal = document.getElementById('numInfillSpeed')?.value;
+    if (infillSpeedVal) formData.append('infillSpeed', infillSpeedVal);
+    const maxVolVal = document.getElementById('numMaxVolumetric')?.value;
+    if (maxVolVal) formData.append('maxVolumetricSpeed', maxVolVal);
     formData.append('arrange', 'false');
 
     if (printerIp) {

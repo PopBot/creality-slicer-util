@@ -234,6 +234,45 @@
             </select>
           </div>
 
+          <!-- Advanced Tuning Accordion -->
+          <details class="advanced-tuning-accordion" style="margin: 10px 0; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; background: rgba(0,0,0,0.15);">
+            <summary style="cursor: pointer; font-weight: 600; font-size: 12px; color: var(--accent); user-select: none;">
+              🔧 Advanced Slicing & Speeds
+            </summary>
+            <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+              <div class="form-row">
+                <div class="form-group half">
+                  <label for="numNozzleTemp">Nozzle Temp (°C)</label>
+                  <input type="number" id="numNozzleTemp" min="170" max="320" value="230" placeholder="230">
+                </div>
+                <div class="form-group half">
+                  <label for="numBedTemp">Bed Temp (°C)</label>
+                  <input type="number" id="numBedTemp" min="30" max="110" value="50" placeholder="50">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group half">
+                  <label for="numInnerWallSpeed">Inner Wall (mm/s)</label>
+                  <input type="number" id="numInnerWallSpeed" min="20" max="600" value="120" placeholder="120">
+                </div>
+                <div class="form-group half">
+                  <label for="numOuterWallSpeed">Outer Wall (mm/s)</label>
+                  <input type="number" id="numOuterWallSpeed" min="20" max="600" value="80" placeholder="80">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group half">
+                  <label for="numInfillSpeed">Infill Speed (mm/s)</label>
+                  <input type="number" id="numInfillSpeed" min="20" max="600" value="120" placeholder="120">
+                </div>
+                <div class="form-group half">
+                  <label for="numMaxVolumetric">Max Volumetric (mm³/s)</label>
+                  <input type="number" id="numMaxVolumetric" min="5" max="35" value="15" placeholder="15">
+                </div>
+              </div>
+            </div>
+          </details>
+
           <button id="btnSaveDefaults" class="secondary-btn" style="width:100%; margin-top: 6px;" title="Persist these settings to ~/.k1-slicer/config.json">
             💾 Save as Default Settings
           </button>
@@ -655,6 +694,39 @@
             <div class="form-group half" id="cfgCustomSpeedContainer" style="display:none;">
               <label for="cfgCustomSpeed">Custom Speed</label>
               <input type="text" id="cfgCustomSpeed" placeholder="e.g. 250mm/s or 80%">
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px;">
+            <div class="form-group half">
+              <label for="cfgNozzleTemp">Default Nozzle Temp (°C)</label>
+              <input type="number" id="cfgNozzleTemp" min="170" max="320" value="230" placeholder="230">
+            </div>
+            <div class="form-group half">
+              <label for="cfgBedTemp">Default Bed Temp (°C)</label>
+              <input type="number" id="cfgBedTemp" min="30" max="110" value="50" placeholder="50">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="cfgInnerWallSpeed">Inner Wall Speed (mm/s)</label>
+              <input type="number" id="cfgInnerWallSpeed" min="20" max="600" value="120" placeholder="120">
+            </div>
+            <div class="form-group half">
+              <label for="cfgOuterWallSpeed">Outer Wall Speed (mm/s)</label>
+              <input type="number" id="cfgOuterWallSpeed" min="20" max="600" value="80" placeholder="80">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="cfgInfillSpeed">Infill Speed (mm/s)</label>
+              <input type="number" id="cfgInfillSpeed" min="20" max="600" value="120" placeholder="120">
+            </div>
+            <div class="form-group half">
+              <label for="cfgMaxVolumetric">Max Volumetric Speed (mm³/s)</label>
+              <input type="number" id="cfgMaxVolumetric" min="5" max="35" value="15" placeholder="15">
             </div>
           </div>
         </div>

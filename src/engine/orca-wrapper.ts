@@ -16,6 +16,12 @@ export interface SliceOptions {
   brim?: 'auto' | 'outer' | 'inner_and_outer' | 'none';
   walls?: number;
   speed?: string | number; // e.g. '150mm/s', '80%', 200, 'silent', 'sport', etc.
+  nozzleTemp?: number; // e.g. 230 (°C)
+  bedTemp?: number; // e.g. 50 or 60 (°C)
+  innerWallSpeed?: number; // e.g. 80 (mm/s)
+  outerWallSpeed?: number; // e.g. 60 (mm/s)
+  infillSpeed?: number; // e.g. 100 (mm/s)
+  maxVolumetricSpeed?: number; // e.g. 12 (mm³/s)
   arrange?: boolean;
   orient?: boolean;
   outputGcodePath?: string;
@@ -246,14 +252,67 @@ export class OrcaWrapper {
       }
     }
 
+    // Granular speed overrides (take precedence over global multiplier)
+    if (options.innerWallSpeed && !isNaN(options.innerWallSpeed)) {
+      processJson.inner_wall_speed = String(options.innerWallSpeed);
+      logCallback(`Inner wall speed override: ${options.innerWallSpeed} mm/s`);
+    }
+    if (options.outerWallSpeed && !isNaN(options.outerWallSpeed)) {
+      processJson.outer_wall_speed = String(options.outerWallSpeed);
+      logCallback(`Outer wall speed override: ${options.outerWallSpeed} mm/s`);
+    }
+    if (options.infillSpeed && !isNaN(options.infillSpeed)) {
+      processJson.sparse_infill_speed = String(options.infillSpeed);
+      processJson.internal_solid_infill_speed = String(options.infillSpeed);
+      logCallback(`Infill speed override: ${options.infillSpeed} mm/s`);
+    }
+
     const customProcessPath = path.join(tempDir, 'custom_process.json');
     fs.writeFileSync(customProcessPath, JSON.stringify(processJson, null, 2), 'utf-8');
+
+    // Create custom filament profile to apply custom temperatures and volumetric speed limit
+    let effectiveFilamentPath = filamentProfile;
+    try {
+      const filamentRaw = fs.readFileSync(filamentProfile, 'utf-8');
+      const filamentJson = JSON.parse(filamentRaw);
+      let filamentModified = false;
+
+      if (options.nozzleTemp && !isNaN(options.nozzleTemp)) {
+        filamentJson.nozzle_temperature = [String(options.nozzleTemp)];
+        filamentJson.nozzle_temperature_initial_layer = [String(options.nozzleTemp)];
+        filamentModified = true;
+        logCallback(`Nozzle temperature override: ${options.nozzleTemp}°C`);
+      }
+      if (options.bedTemp && !isNaN(options.bedTemp)) {
+        filamentJson.hot_plate_temp = [String(options.bedTemp)];
+        filamentJson.hot_plate_temp_initial_layer = [String(options.bedTemp)];
+        filamentJson.cool_plate_temp = [String(options.bedTemp)];
+        filamentJson.cool_plate_temp_initial_layer = [String(options.bedTemp)];
+        filamentJson.textured_plate_temp = [String(options.bedTemp)];
+        filamentJson.textured_plate_temp_initial_layer = [String(options.bedTemp)];
+        filamentModified = true;
+        logCallback(`Bed temperature override: ${options.bedTemp}°C`);
+      }
+      if (options.maxVolumetricSpeed && !isNaN(options.maxVolumetricSpeed)) {
+        filamentJson.filament_max_volumetric_speed = [String(options.maxVolumetricSpeed)];
+        filamentModified = true;
+        logCallback(`Max volumetric speed cap: ${options.maxVolumetricSpeed} mm³/s`);
+      }
+
+      if (filamentModified) {
+        const customFilamentPath = path.join(tempDir, 'custom_filament.json');
+        fs.writeFileSync(customFilamentPath, JSON.stringify(filamentJson, null, 2), 'utf-8');
+        effectiveFilamentPath = customFilamentPath;
+      }
+    } catch (err: any) {
+      logCallback(`Notice: Could not generate custom filament profile: ${err.message}`);
+    }
 
     const args: string[] = [
       '--load-settings',
       `${machineProfile};${customProcessPath}`,
       '--load-filaments',
-      filamentProfile,
+      effectiveFilamentPath,
     ];
 
     // Arrange / Orient flags supported by CLI

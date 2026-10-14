@@ -18,6 +18,12 @@ export interface K1Config {
   autoOrient?: boolean;
   unit?: 'inches' | 'mm';
   speed?: string;
+  nozzleTemp?: number;
+  bedTemp?: number;
+  innerWallSpeed?: number;
+  outerWallSpeed?: number;
+  infillSpeed?: number;
+  maxVolumetricSpeed?: number;
   orcaPath?: string;
 }
 
@@ -33,6 +39,12 @@ export const DEFAULT_CONFIG: K1Config = {
   brim: 'auto',
   walls: 3,
   speed: '100%',
+  nozzleTemp: 230,
+  bedTemp: 50,
+  innerWallSpeed: 120,
+  outerWallSpeed: 80,
+  infillSpeed: 120,
+  maxVolumetricSpeed: 15,
   autoCenter: true,
   autoOrient: false,
   unit: 'inches',
