@@ -161,7 +161,7 @@
             <label for="selMaterial">Filament Material</label>
             <select id="selMaterial">
               <option value="hyper-pla">Creality Hyper PLA (High Speed)</option>
-              <option value="ender-pla">Creality Ender PLA (Standard 40-80 mm/s)</option>
+              <option value="ender-pla" selected>Creality Ender PLA (Standard 40-80 mm/s)</option>
               <option value="pla">Generic PLA</option>
               <option value="petg">Hyper PETG</option>
               <option value="abs">Hyper ABS</option>
@@ -172,9 +172,9 @@
           <div class="form-group">
             <div class="slider-header">
               <label for="rangeInfill">Infill Density</label>
-              <span id="infillVal">20%</span>
+              <span id="infillVal">15%</span>
             </div>
-            <input type="range" id="rangeInfill" min="0" max="100" value="20" step="5">
+            <input type="range" id="rangeInfill" min="0" max="100" value="15" step="5">
           </div>
 
           <div class="form-group">
@@ -317,7 +317,7 @@
                 <div class="form-row" style="margin-top: 4px;">
                   <div class="form-group half">
                     <label for="numMaxVolumetric">Volumetric Cap (mm³/s)</label>
-                    <input type="number" id="numMaxVolumetric" min="5" max="35" value="15" placeholder="15">
+                    <input type="number" id="numMaxVolumetric" min="5" max="35" value="12" placeholder="12">
                   </div>
                   <div class="form-group half">
                     <label for="numFlowRatio">Flow Multiplier</label>
@@ -727,7 +727,7 @@
               <label for="cfgMaterial">Default Filament</label>
               <select id="cfgMaterial">
                 <option value="hyper-pla">Creality Hyper PLA (High Speed)</option>
-                <option value="ender-pla">Creality Ender PLA (Standard 40-80 mm/s)</option>
+                <option value="ender-pla" selected>Creality Ender PLA (Standard 40-80 mm/s)</option>
                 <option value="pla">Generic PLA</option>
                 <option value="petg">Hyper PETG</option>
                 <option value="abs">Hyper ABS</option>
@@ -738,7 +738,7 @@
           <div class="form-row">
             <div class="form-group half">
               <label for="cfgInfill">Default Infill %</label>
-              <input type="number" id="cfgInfill" min="0" max="100" value="20">
+              <input type="number" id="cfgInfill" min="0" max="100" value="15">
             </div>
             <div class="form-group half">
               <label for="cfgInfillPattern">Default Infill Pattern</label>
@@ -873,7 +873,7 @@
             <div class="form-row" style="margin-top: 4px;">
               <div class="form-group half">
                 <label for="cfgMaxVolumetric">Volumetric Speed Cap (mm³/s)</label>
-                <input type="number" id="cfgMaxVolumetric" min="5" max="35" value="15" placeholder="15">
+                <input type="number" id="cfgMaxVolumetric" min="5" max="35" value="12" placeholder="12">
               </div>
               <div class="form-group half">
                 <label for="cfgFlowRatio">Filament Flow Multiplier</label>
